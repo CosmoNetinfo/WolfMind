@@ -450,9 +450,10 @@ Usa l'italiano e sii conciso ed efficace.`;
 
   return (
     <div className="flex flex-col h-screen w-screen bg-darkBg text-slate-800 font-sans selection:bg-glowCyan/20 selection:text-slate-900">
-      {/* Header bar */}
-      <header data-tauri-drag-region className="flex items-center justify-between px-6 py-4 bg-white/90 border-b border-sky-100/45 glass shadow-md z-10 select-none cursor-default">
-        <div className="flex items-center gap-4">
+      <header className="relative flex items-center justify-between px-6 py-4 bg-white/90 border-b border-sky-100/45 glass shadow-md z-10 select-none cursor-default">
+        {/* Drag handle layer */}
+        <div data-tauri-drag-region className="absolute inset-0 z-0" />
+        <div className="flex items-center gap-4 z-10">
           <div className="flex items-center gap-2">
             <img src="/WolfMidLogo.png" className="w-9 h-9 object-contain" alt="Logo" />
             <span className="text-lg font-bold tracking-wider gradient-text-premium">
@@ -477,7 +478,7 @@ Usa l'italiano e sii conciso ed efficace.`;
         </div>
 
         {/* Tab switcher */}
-        <div className="flex gap-2.5 items-center">
+        <div className="flex gap-2.5 items-center z-10">
           {(['chat', 'cervello', 'sessioni'] as const).map(tab => (
             <button
               key={tab}
