@@ -155,22 +155,21 @@ Gestione diretta della tua conoscenza offline:
 
 ---
 
-## 🔮 Integrazioni Future Possibili
+## ⚡ Funzionalità Avanzate Implementate
 
-WolfMind è progettato per essere scalabile ed espandibile nel tempo. Ecco le evoluzioni pianificate o possibili per le future versioni:
+WolfMind integra funzionalità all'avanguardia per la privacy, l'automazione e l'efficienza:
 
-1. **[IMPLEMENTATO] Integrazione LLM 100% Locali (Ollama)**:
-   - Supporto completo ad endpoint locali (es. `http://localhost:11434`) per far girare modelli come Llama 3 o Qwen in modalità totalmente offline. Configurabile comodamente dal pannello Impostazioni.
-2. **[IMPLEMENTATO] Ricerca Semantica RAG Locale**:
+1. **Integrazione LLM 100% Locali (Ollama)**:
+   - Supporto completo ad endpoint locali (es. `http://localhost:11434`) per far girare modelli come Llama 3 o Qwen in modalità totalmente offline. Configurabile dal pannello Impostazioni.
+2. **Ricerca Semantica RAG Locale**:
    - Motore di ricerca TF-IDF nativo sviluppato in Rust che scansiona e indicizza le note Markdown locali, estraendo i 3 file più pertinenti alla richiesta dell'utente per passarli come contesto immediato all'IA (RAG).
-3. **[IMPLEMENTATO] Attivazione Vocale Continua ("Wake Word")**:
+3. **Attivazione Vocale Continua ("Wake Word")**:
    - Modalità di ascolto continuo nativo con rilevazione della frase di attivazione (es. *"Ehi Wolf"* o *"WolfMind"*). Esegue automaticamente i comandi vocali pronunciati dopo la wake word.
-4. **Speech-to-Text e Text-to-Speech Offline**:
-   - Sostituzione della Web Speech API del browser con modelli locali autonomi (es. Whisper.cpp per la trascrizione e Piper TTS per la sintesi vocale sintetica in italiano offline).
-5. **[IMPLEMENTATO] Git Sync Automatico delle Note**:
-   - Committing e push automatici in background della cartella `/cervello/` su repository remoto ad ogni modifica o sessione salvata.
-6. **[IMPLEMENTATO] Modulo Auto-Updater (Tauri v2)**:
-   - Controllo degli aggiornamenti all'avvio o manuale con firma digitale di sicurezza e installazione nativa guidata.
+4. **Git Sync Automatico delle Note**:
+   - Committing e push automatici in background della cartella `/cervello/` su repository remoto ad ogni modifica o sessione salvata, assicurando backup e sincronizzazione immediati.
+5. **Modulo Auto-Updater (Tauri v2)**:
+   - Controllo degli aggiornamenti all'avvio o manuale con firma digitale di sicurezza e installazione nativa guidata per garantire che l'app rimanga sempre aggiornata.
+
 
 
 
