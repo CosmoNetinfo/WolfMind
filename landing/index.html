@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WolfMind — Il tuo Secondo Cervello Digitale</title>
+    <meta name="description" content="WolfMind è un'applicazione desktop premium di personal knowledge management integrata con IA e auto-sync Git in background.">
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Style CSS -->
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- Background Glow Orbs -->
+    <div class="glow-orb orb-1"></div>
+    <div class="glow-orb orb-2"></div>
+    <div class="glow-orb orb-3"></div>
+
+    <!-- Header Navigation -->
+    <header class="header">
+        <div class="container header-container">
+            <div class="logo-area">
+                <img src="../public/WolfMidLogo.png" alt="WolfMind Logo" class="logo-img">
+                <span class="logo-text">Wolf<span class="gradient-text">Mind</span></span>
+            </div>
+            <nav class="nav">
+                <a href="#features" class="nav-link">Caratteristiche</a>
+                <a href="#git-sync" class="nav-link">Git Auto-Sync</a>
+                <a href="#keys-guide" class="nav-link">Guida Chiavi API</a>
+                <a href="#roadmap" class="nav-link">Sviluppi Futuri</a>
+            </nav>
+            <div class="header-actions">
+                <a href="https://github.com/CosmoNetinfo/WolfMind/releases/latest" target="_blank" class="btn btn-secondary btn-sm">Download App</a>
+                <a href="https://github.com/CosmoNetinfo/WolfMind" target="_blank" class="github-icon-link" title="Repository GitHub">
+                    <svg class="github-svg" viewBox="0 0 24 24" width="24" height="24">
+                        <path fill="currentColor" d="M12 2A10 10 0 0 0 2 12c0 4.42 2.87 8.17 6.84 9.5.5.08.66-.23.66-.5v-1.69c-2.77.6-3.36-1.34-3.36-1.34-.46-1.16-1.11-1.47-1.11-1.47-.9-.62.07-.6.07-.6 1 .07 1.53 1.03 1.53 1.03.9 1.52 2.34 1.07 2.91.83.09-.65.35-1.09.63-1.34-2.22-.25-4.55-1.11-4.55-4.92 0-1.11.38-2 1.03-2.71-.1-.25-.45-1.29.1-2.64 0 0 .84-.27 2.75 1.02.79-.22 1.65-.33 2.5-.33.85 0 1.71.11 2.5.33 1.91-1.29 2.75-1.02 2.75-1.02.55 1.35.2 2.39.1 2.64.65.71 1.03 1.6 1.03 2.71 0 3.82-2.34 4.66-4.57 4.91.36.31.69.92.69 1.85V21c0 .27.16.59.67.5C19.14 20.16 22 16.42 22 12A10 10 0 0 0 12 2z"/>
+                    </svg>
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <!-- Hero Section -->
+    <section class="hero-section">
+        <div class="container hero-container">
+            <div class="hero-badge animate-fade-in">Nuovo Rilascio v0.1.9</div>
+            <h1 class="hero-title animate-slide-up">
+                Il tuo Secondo Cervello Digitale,<br>
+                <span class="gradient-text">Potenziato dall'IA</span>
+            </h1>
+            <p class="hero-subtitle animate-slide-up-delay">
+                WolfMind è un client desktop premium, veloce e locale per gestire la tua conoscenza personale. 
+                Integra modelli IA intelligenti e sincronizza le tue note direttamente su Git in background.
+            </p>
+            <div class="hero-buttons animate-slide-up-delay-2">
+                <a href="https://github.com/CosmoNetinfo/WolfMind/releases/latest" target="_blank" class="btn btn-primary btn-lg">
+                    Scarica per Windows
+                    <span class="btn-subtext">Versione v0.1.9 — Installazione Rapida</span>
+                </a>
+                <a href="https://github.com/CosmoNetinfo/WolfMind" target="_blank" class="btn btn-outline btn-lg">
+                    Esplora il Codice
+                </a>
+            </div>
+
+            <!-- Interactive App Showcase Mockup -->
+            <div class="showcase-mockup-wrapper animate-zoom-in">
+                <div class="showcase-glow"></div>
+                <div class="window-frame">
+                    <div class="window-header">
+                        <div class="window-dots">
+                            <div class="window-dot red"></div>
+                            <div class="window-dot yellow"></div>
+                            <div class="window-dot green"></div>
+                        </div>
+                        <span class="window-title">Demo Interattiva di WolfMind (Modifica il testo o scrivi all'IA)</span>
+                    </div>
+                    
+                    <!-- App Mock Container -->
+                    <div class="demo-window-container">
+                        <!-- Sidebar -->
+                        <aside class="demo-sidebar">
+                            <div class="demo-logo-section">
+                                <img src="../public/WolfMidLogo.png" alt="WolfMind Logo" style="height: 22px; width: auto;">
+                                <span class="demo-logo-txt">WolfMind</span>
+                            </div>
+                            
+                            <span class="demo-section-lbl">NOTEBOOK</span>
+                            <ul class="demo-note-list">
+                                <li class="demo-note-item active" data-note-id="welcome">
+                                    <span class="note-icon">🐺</span> Benvenuto in WolfMind
+                                </li>
+                                <li class="demo-note-item" data-note-id="idea">
+                                    <span class="note-icon">💡</span> Idea per Nuova App
+                                </li>
+                                <li class="demo-note-item" data-note-id="todo">
+                                    <span class="note-icon">📝</span> Lista Cose da Fare
+                                </li>
+                            </ul>
+                        </aside>
+
+                        <!-- Main Editor -->
+                        <main class="demo-main-editor">
+                            <div class="demo-editor-header">
+                                <input type="text" class="demo-editor-title" value="">
+                            </div>
+                            <textarea class="demo-editor-textarea"></textarea>
+                            
+                            <!-- Git Sync Toast inside main editor -->
+                            <div class="demo-sync-toast">
+                                <div class="spinner demo-sync-spinner"></div>
+                                <span class="demo-sync-text">Git: Repository sincronizzato!</span>
+                            </div>
+                        </main>
+
+                        <!-- AI Sidebar -->
+                        <aside class="demo-chat-sidebar">
+                            <div class="demo-chat-header">
+                                <h4>
+                                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                                        <circle cx="12" cy="12" r="10"/>
+                                        <path d="M12 8v8M8 12h8"/>
+                                    </svg>
+                                    Assistente IA
+                                </h4>
+                                <span style="font-size: 11px; background-color: #e2e8f0; padding: 2px 6px; border-radius: 4px; color: #475569; font-weight: 600;">Groq - Llama3</span>
+                            </div>
+                            <div class="demo-chat-messages">
+                                <div class="demo-msg ai">
+                                    Ciao! Sono il tuo copilota di intelligenza artificiale. Puoi farmi domande sul contenuto delle tue note o chiedermi di generare nuove idee.
+                                </div>
+                            </div>
+                            <div class="demo-chat-input-area">
+                                <input type="text" class="demo-chat-input" placeholder="Scrivi all'IA...">
+                                <button class="demo-chat-send">Invia</button>
+                            </div>
+                        </aside>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features Section -->
+    <section id="features" class="section">
+        <div class="container">
+            <div class="section-header">
+                <h2 class="section-title">Architettura Premium & Funzionalità Chiave</h2>
+                <p class="section-subtitle">Progettato per programmatori, ricercatori e appassionati di produttività.</p>
+            </div>
+            <div class="features-grid">
+                <!-- Card 1 -->
+                <div class="feature-card">
+                    <div class="feature-icon font-gradient">
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="28" height="28">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+                        </svg>
+                    </div>
+                    <h3>Privacy & Controllo Totale</h3>
+                    <p>Nessun server proprietario. Le tue note rimangono in file Markdown locali nel tuo computer, protette e accessibili in qualsiasi momento.</p>
+                </div>
+
+                <!-- Card 2 -->
+                <div class="feature-card">
+                    <div class="feature-icon font-gradient">
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="28" height="28">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                        </svg>
+                    </div>
+                    <h3>AI Ibrida (Locale & Cloud)</h3>
+                    <p>Collega modelli ultra-veloci in cloud (Groq, OpenRouter) o esegui modelli interamente offline tramite Ollama o LM Studio direttamente sulla tua macchina.</p>
+                </div>
+
+                <!-- Card 3 -->
+                <div class="feature-card">
+                    <div class="feature-icon font-gradient">
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="28" height="28">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7v12m0 0l-4-4m4 4l4-4m0 6V7m0 0l-4 4m4-4l4 4m-5 4h8"/>
+                        </svg>
+                    </div>
+                    <h3>Sincronizzazione Git Nativa</h3>
+                    <p>Un thread Rust in background monitora le modifiche e committa/pusha in automatico sul tuo repository Git ad ogni salvataggio. Sicuro e versionato.</p>
+                </div>
+
+                <!-- Card 4 -->
+                <div class="feature-card">
+                    <div class="feature-icon font-gradient">
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="28" height="28">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7"/>
+                        </svg>
+                    </div>
+                    <h3>UI Minimalista Borderless</h3>
+                    <p>Tema chiaro premium con controlli finestra nativi e personalizzati integrati direttamente nell'interfaccia borderless, massimizzando lo spazio utile.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Git Sync Detail Section -->
+    <section id="git-sync" class="section bg-card-glow">
+        <div class="container">
+            <div class="two-column-layout">
+                <div class="column-left">
+                    <div class="section-tag">Rust Core Engine</div>
+                    <h2 class="section-title text-left">Come funziona l'Auto-Sync in Background</h2>
+                    <p class="body-text">
+                        A differenza di altri strumenti, WolfMind non richiede l'installazione di client Git esterni o operazioni manuali. L'applicazione sfrutta un motore scritto in <strong>Rust</strong> che:
+                    </p>
+                    <ul class="styled-list">
+                        <li>Rileva istantaneamente la creazione, modifica o eliminazione di note e sessioni.</li>
+                        <li>Gestisce la coda dei salvataggi in background in modo non bloccante.</li>
+                        <li>Effettua il <code>git add</code>, <code>git commit</code> automatico con messaggi descrittivi ed esegue il <code>git push</code> silenziosamente.</li>
+                    </ul>
+                </div>
+                <div class="column-right">
+                    <div class="code-preview-card">
+                        <div class="code-header">
+                            <span class="code-lang">src-tauri/src/lib.rs</span>
+                            <div class="code-dots">
+                                <span></span><span></span><span></span>
+                            </div>
+                        </div>
+                        <pre><code><span class="code-keyword">fn</span> <span class="code-function">auto_git_commit_and_push</span>(repo_path: &amp;Path, message: &amp;str) -> Result<(), String> {
+    <span class="code-comment">// Esegue git add, commit e push tramite std::process::Command</span>
+    Command::new(<span class="code-string">"git"</span>).args([<span class="code-string">"add"</span>, <span class="code-string">"."</span>]).current_dir(repo_path)...
+    Command::new(<span class="code-string">"git"</span>).args([<span class="code-string">"commit"</span>, <span class="code-string">"-m"</span>, message]).current_dir(repo_path)...
+    Command::new(<span class="code-string">"git"</span>).args([<span class="code-string">"push"</span>]).current_dir(repo_path)...
+    Ok(())
+}</code></pre>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- API Keys Guide Section -->
+    <section id="keys-guide" class="section">
+        <div class="container">
+            <div class="section-header">
+                <h2 class="section-title">Come ottenere Chiavi API Gratuite</h2>
+                <p class="section-subtitle">Configura il tuo assistente IA in meno di 5 minuti senza spendere nulla.</p>
+            </div>
+            
+            <div class="accordion-container">
+                <!-- Item 1 -->
+                <div class="accordion-item">
+                    <button class="accordion-header">
+                        <span>1. Groq API Key (Ultra-veloce e piano gratuito generoso)</span>
+                        <span class="accordion-icon">+</span>
+                    </button>
+                    <div class="accordion-content">
+                        <p>Groq offre il motore di inferenza più veloce del pianeta con modelli open-source (come Llama 3 e Mixtral) accessibili gratuitamente:</p>
+                        <ol>
+                            <li>Visita la <a href="https://console.groq.com" target="_blank">Groq Console</a>.</li>
+                            <li>Registrati o accedi con il tuo account.</li>
+                            <li>Vai nella sezione <strong>"API Keys"</strong>.</li>
+                            <li>Clicca su <strong>"Create API Key"</strong>, assegna un nome ed effettua la copia.</li>
+                            <li>Incolla la chiave nelle impostazioni di WolfMind.</li>
+                        </ol>
+                    </div>
+                </div>
+
+                <!-- Item 2 -->
+                <div class="accordion-item">
+                    <button class="accordion-header">
+                        <span>2. OpenRouter API Key (Accesso a decine di modelli gratuiti)</span>
+                        <span class="accordion-icon">+</span>
+                    </button>
+                    <div class="accordion-content">
+                        <p>OpenRouter è un aggregatore che permette di testare moltissimi modelli avanzati:</p>
+                        <ol>
+                            <li>Registrati su <a href="https://openrouter.ai" target="_blank">OpenRouter.ai</a>.</li>
+                            <li>Vai nel tuo profilo e seleziona <strong>"Keys"</strong>.</li>
+                            <li>Genera una chiave.</li>
+                            <li>Cerca i modelli contrassegnati con la dicitura <strong>"Free"</strong> (ad es. Llama-3-8B-Instruct-Free, Gemma 2) per usarli gratis.</li>
+                        </ol>
+                    </div>
+                </div>
+
+                <!-- Item 3 -->
+                <div class="accordion-item">
+                    <button class="accordion-header">
+                        <span>3. Modelli Locali Offline (100% Privacy)</span>
+                        <span class="accordion-icon">+</span>
+                    </button>
+                    <div class="accordion-content">
+                        <p>Se desideri la massima privacy senza trasmettere dati a servizi di terze parti:</p>
+                        <ul>
+                            <li><strong>Ollama:</strong> Scarica Ollama, esegui <code>ollama run llama3</code> e configura WolfMind all'indirizzo predefinito <code>http://localhost:11434/v1</code>.</li>
+                            <li><strong>LM Studio:</strong> Avvia il Server Locale all'interno dell'app e connetti WolfMind all'indirizzo <code>http://localhost:1234/v1</code>.</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Roadmap Section -->
+    <section id="roadmap" class="section bg-card-glow-purple">
+        <div class="container">
+            <div class="section-header">
+                <h2 class="section-title">Sviluppi Futuri & Roadmap</h2>
+                <p class="section-subtitle">Il futuro del Knowledge Management intelligente e collaborativo.</p>
+            </div>
+            
+            <div class="timeline">
+                <div class="timeline-item">
+                    <div class="timeline-dot"></div>
+                    <div class="timeline-date">Fase 1 (Attiva)</div>
+                    <div class="timeline-content">
+                        <h3>Markdown Core & Git Auto-Sync</h3>
+                        <p>Editor Markdown premium, gestione automatica del ciclo di commit/push, salvataggio automatico persistente delle sessioni.</p>
+                    </div>
+                </div>
+
+                <div class="timeline-item">
+                    <div class="timeline-dot"></div>
+                    <div class="timeline-date">Fase 2 (In Arrivo)</div>
+                    <div class="timeline-content">
+                        <h3>Visual Graph delle Connessioni</h3>
+                        <p>Una visualizzazione a grafo 2D/3D interattiva per vedere come le note, i file e i concetti si collegano tra di loro tramite i tag e i link interni.</p>
+                    </div>
+                </div>
+
+                <div class="timeline-item">
+                    <div class="timeline-dot"></div>
+                    <div class="timeline-date">Fase 3 (Pianificata)</div>
+                    <div class="timeline-content">
+                        <h3>Modelli RAG Locali (Retrieval-Augmented Generation)</h3>
+                        <p>Consentire all'IA integrata di rispondere ed elaborare basandosi direttamente sull'intero archivio di note del tuo workspace, totalmente in locale.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container footer-container">
+            <div class="footer-left">
+                <span class="logo-text">Wolf<span class="gradient-text">Mind</span></span>
+                <p class="footer-desc">Progettato per elevare la produttività intellettuale, con privacy e velocità.</p>
+            </div>
+            <div class="footer-right">
+                <p>© 2026 CosmoNet. Tutti i diritti riservati.</p>
+                <a href="https://github.com/CosmoNetinfo/WolfMind" target="_blank" class="footer-link">Sorgente GitHub</a>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Script Accordion -->
+    <script>
+        document.querySelectorAll('.accordion-header').forEach(button => {
+            button.addEventListener('click', () => {
+                const accordionItem = button.parentElement;
+                const content = accordionItem.querySelector('.accordion-content');
+                const isOpen = accordionItem.classList.contains('active');
+                
+                // Close all items
+                document.querySelectorAll('.accordion-item').forEach(item => {
+                    item.classList.remove('active');
+                    item.querySelector('.accordion-content').style.maxHeight = null;
+                    item.querySelector('.accordion-icon').textContent = '+';
+                });
+
+                if (!isOpen) {
+                    accordionItem.classList.add('active');
+                    content.style.maxHeight = content.scrollHeight + "px";
+                    button.querySelector('.accordion-icon').textContent = '−';
+                }
+            });
+        });
+    </script>
+    <!-- Interactive App Demo JavaScript -->
+    <script src="demo.js"></script>
+</body>
+</html>
