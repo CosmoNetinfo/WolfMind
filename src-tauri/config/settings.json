@@ -9,7 +9,7 @@
   "tts_voice": "auto-italian",
   "tts_rate": 1.05,
   "verifier_enabled": true,
-  "active_mode": "articolo",
+  "active_mode": "chat",
   "kb_max_tokens": 8000,
   "auto_save_session": true,
   "language": "it"
