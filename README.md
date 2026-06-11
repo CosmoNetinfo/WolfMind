@@ -23,6 +23,8 @@ WolfMind è un'applicazione desktop **AI vocale multi-agente** con base di conos
 - **Frontend**: React 18 + TypeScript + Vite.
 - **Styling**: Tailwind CSS v3 con design system premium scuro, dettagli luminescenti e micro-animazioni.
 - **Speech Integration**: Web Speech API nativa (Chromium) per Speech-To-Text (STT) e Text-To-Speech (TTS) con filtro intelligente dei blocchi di codice e tag.
+- **Borderless Window Controls**: Finestra frameless personalizzata con gestione nativa dei controlli di riduzione a icona, massimizzazione e chiusura (risolti e configurati in `v0.1.9`).
+- **Interactive Landing Page**: Presentazione del progetto disponibile nella cartella `/landing/` con una demo interattiva completa eseguibile direttamente nel browser.
 - **Multi-Agent Pipeline**:
   1. **Agente 1 — Groq (Generatore)**: Utilizza `llama-3.3-70b-versatile` ad altissima velocità e bassissima latenza per generare la risposta principale integrando la KB.
   2. **Agente 2 — OpenRouter (Programmatore)**: Modello `qwen/qwen-2.5-coder-32b-instruct:free`. Si attiva automaticamente in presenza di blocchi di codice o in modalità tecnica, per ottimizzare, completare ed eliminare bug dal codice.
