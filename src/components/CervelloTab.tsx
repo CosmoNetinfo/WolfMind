@@ -81,110 +81,113 @@ export default function CervelloTab({ onRefreshKB, kbFiles, onLog }: CervelloTab
   );
 
   return (
-    <div className="flex h-full w-full gap-4 p-4 text-gray-200">
+    <div className="flex h-full w-full gap-5 p-6 text-slate-200">
       {/* File List Panel */}
-      <div className="flex w-1/3 flex-col rounded-xl glass border border-gray-800 p-4">
+      <div className="flex w-80 flex-col rounded-2xl glass p-4 border border-white/[0.03] shadow-2xl">
         <div className="flex justify-between items-center mb-4">
-          <h3 className="text-lg font-semibold glow-text-cyan flex items-center gap-2">
-            <svg className="w-5 h-5 text-glowCyan animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+          <h3 className="text-sm font-semibold tracking-wide uppercase text-white glow-cyan flex items-center gap-2">
+            <svg className="w-4 h-4 text-glowCyan animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
             </svg>
             Cervello Locale
           </h3>
           <button
             onClick={() => setIsCreating(!isCreating)}
-            className="p-1.5 rounded-lg bg-darkSecondary border border-gray-700 hover:border-glowCyan text-glowCyan transition-all"
+            className="p-1.5 rounded-xl bg-white/[0.03] border border-white/10 hover:border-glowCyan hover:bg-glowCyan/10 text-gray-400 hover:text-glowCyan transition-all duration-300"
             title="Nuovo File"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 4v16m8-8H4" />
             </svg>
           </button>
         </div>
 
         {/* Search */}
-        <div className="relative mb-3">
+        <div className="relative mb-4">
           <input
             type="text"
             placeholder="Cerca file..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full bg-darkBg text-xs border border-gray-700 rounded-lg py-1.5 pl-8 pr-3 focus:outline-none focus:border-glowCyan text-gray-300 transition-colors"
+            className="w-full premium-input text-xs py-2 pl-9 pr-3"
           />
-          <svg className="absolute left-2.5 top-2 w-3.5 h-3.5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+          <svg className="absolute left-3 top-2.5 w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
           </svg>
         </div>
 
         {isCreating && (
-          <form onSubmit={handleCreateFile} className="mb-4 p-3 bg-darkBg rounded-lg border border-gray-800 flex gap-2">
+          <form onSubmit={handleCreateFile} className="mb-4 p-3 bg-black/45 rounded-xl border border-white/[0.05] flex gap-2">
             <input
               type="text"
               placeholder="nome-file.md"
               value={newFileName}
               onChange={(e) => setNewFileName(e.target.value)}
-              className="flex-1 bg-darkSecondary border border-gray-700 rounded px-2 py-1 text-xs focus:outline-none focus:border-glowCyan"
+              className="flex-1 premium-input px-2 py-1 text-xs"
               autoFocus
             />
-            <button type="submit" className="bg-darkSecondary text-glowCyan border border-gray-700 hover:border-glowCyan px-3 py-1 rounded text-xs transition-colors">
+            <button type="submit" className="bg-glowCyan/10 text-glowCyan border border-glowCyan/30 hover:border-glowCyan px-3 py-1 rounded-lg text-xs transition-all duration-300 font-semibold">
               Crea
             </button>
           </form>
         )}
 
-        <div className="flex-1 overflow-y-auto space-y-1 pr-1">
+        <div className="flex-1 overflow-y-auto space-y-1.5 pr-1">
           {filteredFiles.length === 0 ? (
-            <p className="text-gray-500 text-center text-xs py-8">Nessun file trovato</p>
+            <p className="text-slate-500 text-center text-xs py-8">Nessun file trovato</p>
           ) : (
-            filteredFiles.map((name) => (
-              <div
-                key={name}
-                onClick={() => handleSelectFile(name)}
-                className={`group flex items-center justify-between p-2.5 rounded-lg cursor-pointer transition-all border ${
-                  selectedFile === name
-                    ? 'bg-darkSecondary border-glowCyan text-white glow-shadow-cyan'
-                    : 'bg-transparent border-transparent hover:bg-darkSecondary hover:text-white'
-                }`}
-              >
-                <div className="flex items-center gap-2 overflow-hidden">
-                  <svg className={`w-4 h-4 flex-shrink-0 ${selectedFile === name ? 'text-glowCyan' : 'text-gray-500'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                  </svg>
-                  <span className="text-xs truncate font-medium">{name}</span>
-                </div>
-                {/* Delete button (only show on hover or when selected, except index/regole templates to protect them) */}
-                {!['INDEX.md', 'regole-articoli.md', 'regole-yoast.md', 'stack-tecnologico.md', 'brief-template.md'].includes(name) && (
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleDeleteFile(name);
-                    }}
-                    className="opacity-0 group-hover:opacity-100 p-1 text-gray-500 hover:text-red-400 rounded transition-opacity"
-                    title="Elimina File"
-                  >
-                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+            filteredFiles.map((name) => {
+              const isSelected = selectedFile === name;
+              return (
+                <div
+                  key={name}
+                  onClick={() => handleSelectFile(name)}
+                  className={`group flex items-center justify-between p-3 rounded-xl cursor-pointer transition-all duration-300 border ${
+                    isSelected
+                      ? 'bg-gradient-to-r from-glowCyan/15 to-indigo-500/10 border-glowCyan/50 text-white shadow-[0_0_15px_rgba(102,252,241,0.1)] border-l-[3px]'
+                      : 'bg-white/[0.02] border-white/[0.02] hover:bg-white/[0.05] hover:border-white/[0.06] hover:text-white'
+                  }`}
+                >
+                  <div className="flex items-center gap-2.5 overflow-hidden">
+                    <svg className={`w-4 h-4 flex-shrink-0 transition-colors duration-300 ${isSelected ? 'text-glowCyan' : 'text-slate-500 group-hover:text-glowCyan'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                     </svg>
-                  </button>
-                )}
-              </div>
-            ))
+                    <span className="text-xs truncate font-medium tracking-wide">{name}</span>
+                  </div>
+                  {/* Delete button (except standard template files) */}
+                  {!['INDEX.md', 'regole-articoli.md', 'regole-yoast.md', 'stack-tecnologico.md', 'brief-template.md'].includes(name) && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDeleteFile(name);
+                      }}
+                      className="opacity-0 group-hover:opacity-100 p-1 text-slate-500 hover:text-red-400 hover:bg-red-950/20 rounded-lg transition-all duration-300"
+                      title="Elimina File"
+                    >
+                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      </svg>
+                    </button>
+                  )}
+                </div>
+              );
+            })
           )}
         </div>
       </div>
 
       {/* Editor Panel */}
-      <div className="flex-1 flex flex-col rounded-xl glass border border-gray-800 p-4">
+      <div className="flex-1 flex flex-col rounded-2xl glass border border-white/[0.03] p-5 shadow-2xl">
         {selectedFile ? (
           <div className="flex-1 flex flex-col h-full">
-            <div className="flex justify-between items-center mb-3">
+            <div className="flex justify-between items-center mb-4">
               <div className="flex items-center gap-2">
-                <span className="text-sm font-semibold text-white">{selectedFile}</span>
-                <span className="text-xxs px-2 py-0.5 rounded-full bg-darkSecondary border border-gray-700 text-gray-400">Markdown</span>
+                <span className="text-sm font-semibold tracking-wide text-white">{selectedFile}</span>
+                <span className="text-xxs px-2.5 py-0.5 rounded-full bg-glowCyan/10 border border-glowCyan/20 text-glowCyan font-medium">Markdown</span>
               </div>
               <button
                 onClick={handleSaveFile}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-darkBg text-glowCyan border border-glowCyan/30 hover:border-glowCyan rounded-lg text-xs font-semibold glow-shadow-cyan-hover transition-all"
+                className="flex items-center gap-2 px-4 py-2 bg-glowCyan/10 text-glowCyan border border-glowCyan/45 hover:border-glowCyan hover:bg-glowCyan/15 rounded-xl text-xs font-bold transition-all duration-300 glow-shadow-cyan-hover"
               >
                 <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
@@ -195,17 +198,17 @@ export default function CervelloTab({ onRefreshKB, kbFiles, onLog }: CervelloTab
             <textarea
               value={editorContent}
               onChange={(e) => setEditorContent(e.target.value)}
-              className="flex-1 w-full bg-darkBg text-gray-300 font-mono text-xs p-4 rounded-lg border border-gray-800 focus:outline-none focus:border-glowCyan resize-none leading-relaxed"
+              className="flex-1 w-full bg-black/35 text-slate-350 font-mono text-xs p-5 rounded-xl border border-white/[0.04] focus:outline-none focus:border-glowCyan resize-none leading-relaxed"
               placeholder="Scrivi qui in Markdown..."
             />
           </div>
         ) : (
-          <div className="flex-1 flex flex-col items-center justify-center text-gray-500">
-            <svg className="w-16 h-16 text-gray-700 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <div className="flex-1 flex flex-col items-center justify-center text-slate-500">
+            <svg className="w-12 h-12 text-slate-700 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
             </svg>
-            <p className="text-sm font-medium">Seleziona un file per iniziare a modificarlo</p>
-            <p className="text-xs text-gray-600 mt-1">Le modifiche avranno effetto immediato sulle risposte dell'AI</p>
+            <p className="text-sm font-semibold text-slate-400">Nessun file selezionato</p>
+            <p className="text-xs text-slate-600 mt-1 max-w-xs text-center leading-normal">Seleziona un file Markdown dal Cervello a sinistra per visualizzarlo o modificarlo direttamente.</p>
           </div>
         )}
       </div>

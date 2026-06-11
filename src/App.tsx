@@ -182,14 +182,13 @@ export default function App() {
     window.speechSynthesis.cancel();
 
     // Clean up Markdown and code blocks for speech synthesis
-    let cleanText = text.replace(/<[^>]*>/g, ''); // strip HTML tags
+    let cleanText = text.replace(/<[^>]*>/g, ''); 
     cleanText = cleanText.replace(/```[\s\S]*?```/g, '[Codice generato omesso dalla lettura vocale]');
-    cleanText = cleanText.replace(/[*#_\-`\[\]()]/g, ''); // strip markdown syntax
+    cleanText = cleanText.replace(/[*#_\-`\[\]()]/g, ''); 
     
-    // Limits text to speak to avoid buffer overload (max 300 words)
     const words = cleanText.split(/\s+/);
     if (words.length > 300) {
-      cleanText = words.slice(0, 300).join(' ') + '... [Nota: Testo troppo lungo, la lettura vocale è stata troncata]';
+      cleanText = words.slice(0, 300).join(' ') + '... [Nota: Lettura vocale troncata]';
     }
 
     const utterance = new SpeechSynthesisUtterance(cleanText);
@@ -208,11 +207,11 @@ export default function App() {
   // Compile context from KB Markdown files up to token (char) limit
   const compileKBContext = (): string => {
     let context = '';
-    const maxChars = settings.kb_max_tokens * 4; // Approx 4 chars per token
+    const maxChars = settings.kb_max_tokens * 4; 
     for (const [filename, content] of Object.entries(kbFiles)) {
       context += `\n\n--- FILE: ${filename} ---\n${content}`;
       if (context.length > maxChars) {
-        context = context.slice(0, maxChars) + '\n... [Contesto KB troncato per raggiunti limiti di token]';
+        context = context.slice(0, maxChars) + '\n... [Contesto KB troncato per raggiunti limiti]';
         break;
       }
     }
@@ -242,7 +241,6 @@ export default function App() {
     const kbContext = compileKBContext();
     const compiledSystemPrompt = `${activeProfilePrompt}\n\nCONTESTO KNOWLEDGE BASE DI RIFERIMENTO:\n${kbContext}`;
 
-    // Format chat history for API
     const history: ChatMessage[] = messages.map(m => ({
       role: (m.role === 'user' ? 'user' : 'assistant') as 'user' | 'assistant',
       content: m.content
@@ -268,9 +266,9 @@ export default function App() {
         history
       );
 
-      // 1.5 Coder Agent (OpenRouter) - Refines code output if detected or in tech mode
+      // 1.5 Coder Agent (OpenRouter) - Refines code output if active & detected
       if (settings.coder_enabled && settings.openrouter_api_key && (aiResponse.includes('```') || settings.active_mode === 'brief')) {
-        setStatusText('Ottimizzazione codice...');
+        setStatusText('Ottimizzazione codice (Programmatore)...');
         try {
           const refinedResponse = await refineCodeWithCoderAgent(
             settings.openrouter_api_key,
@@ -287,7 +285,7 @@ export default function App() {
       }
 
       setMessages(prev => prev.map(m => m.id === assistantMsgId ? { ...m, content: aiResponse, isGenerating: false } : m));
-      addLog(`Groq generato con successo: ${aiResponse.slice(0, 50)}...`);
+      addLog(`Risposta generata correttamente.`);
 
       // Read output aloud if TTS enabled
       handleTTS(aiResponse);
@@ -308,7 +306,6 @@ export default function App() {
         addLog(`Verifica completata: ${verResult.status.toUpperCase()}`);
 
         if (verResult.status === 'warning' || verResult.status === 'error') {
-          // Play warning audio cue or TTS notice
           if (settings.tts_enabled) {
             handleTTS(`Attenzione: verifica completata con anomalie. ${verResult.note}`);
           }
@@ -376,7 +373,7 @@ Usa l'italiano e sii conciso ed efficace.`;
 
       setMessages([]);
       setStatusText('Pronto');
-      alert(`Sessione salvata con successo come '${filename}.md'`);
+      alert(`Sessione salvata come '${filename}.md'`);
     } catch (e: any) {
       addLog(`Errore nel salvataggio della sessione: ${e}`);
       alert(`Errore nel salvataggio: ${e}`);
@@ -386,25 +383,22 @@ Usa l'italiano e sii conciso ed efficace.`;
 
   const handleExportModeContent = async (msg: MessageUI) => {
     if (settings.active_mode === 'articolo') {
-      // Copy HTML logic
       try {
         await navigator.clipboard.writeText(msg.content);
-        addLog("HTML dell'articolo copiato nella clipboard.");
-        alert("Codice HTML copiato nella clipboard con successo!");
+        addLog("HTML dell'articolo copiato.");
+        alert("HTML copiato nella clipboard!");
       } catch (err) {
-        alert("Impossibile copiare nella clipboard: " + err);
+        alert("Impossibile copiare: " + err);
       }
     } else if (settings.active_mode === 'brief') {
-      // Save MD logic
       const projectName = prompt("Inserisci il nome del progetto per salvare il brief (es: kashy-brief):", "progetto-brief");
       if (!projectName) return;
       try {
         await invoke('save_session', { name: projectName, content: msg.content });
         addLog(`Brief salvato come: ${projectName}.md`);
-        // Refresh session list
         const sess = await invoke<string[]>('get_sessions');
         setSessions(sess);
-        alert(`Brief '${projectName}.md' salvato nella cartella sessioni.`);
+        alert(`Brief '${projectName}.md' salvato.`);
       } catch (e: any) {
         alert("Errore nel salvataggio: " + e);
       }
@@ -423,23 +417,27 @@ Usa l'italiano e sii conciso ed efficace.`;
   };
 
   return (
-    <div className="flex flex-col h-screen w-screen bg-darkBg text-gray-200">
+    <div className="flex flex-col h-screen w-screen bg-darkBg text-slate-100 font-sans selection:bg-glowCyan/30 selection:text-white">
       {/* Header bar */}
-      <header className="flex items-center justify-between px-6 py-4 bg-darkSecondary/50 border-b border-gray-800 glass">
-        <div className="flex items-center gap-3">
-          <span className="text-xl font-bold tracking-wider text-white glow-text-cyan flex items-center gap-2">
-            <img src="/logo.png" className="w-8 h-8 rounded-lg border border-glowCyan/30 object-cover" alt="Logo" />
-            WolfMind
-          </span>
-          <div className="flex rounded-lg bg-darkBg p-0.5 border border-gray-800">
+      <header className="flex items-center justify-between px-6 py-4 bg-darkSecondary/40 border-b border-white/[0.03] glass shadow-lg z-10">
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2">
+            <div className="w-9 h-9 rounded-xl overflow-hidden border border-glowCyan/30 shadow-[0_0_15px_rgba(102,252,241,0.15)] flex items-center justify-center bg-black/40">
+              <img src="/logo.png" className="w-7.5 h-7.5 object-contain" alt="Logo" />
+            </div>
+            <span className="text-lg font-bold tracking-wider gradient-text-gold-cyan">
+              WolfMind
+            </span>
+          </div>
+          <div className="flex rounded-xl bg-black/40 p-1 border border-white/[0.04]">
             {(['chat', 'articolo', 'brief'] as const).map(mode => (
               <button
                 key={mode}
                 onClick={() => handleSaveSettings({ ...settings, active_mode: mode })}
-                className={`px-3 py-1 rounded-md text-xs font-semibold uppercase transition-all ${
+                className={`px-4.5 py-1.5 rounded-lg text-xs font-semibold uppercase tracking-wider transition-all duration-300 ${
                   settings.active_mode === mode
-                    ? 'bg-darkSecondary text-glowCyan glow-shadow-cyan border border-gray-700'
-                    : 'text-gray-400 hover:text-white border border-transparent'
+                    ? 'gradient-active text-white font-bold'
+                    : 'text-slate-450 hover:text-white'
                 }`}
               >
                 {mode === 'brief' ? 'BRIEF DEV' : mode}
@@ -449,7 +447,7 @@ Usa l'italiano e sii conciso ed efficace.`;
         </div>
 
         {/* Tab switcher */}
-        <div className="flex gap-2">
+        <div className="flex gap-2.5 items-center">
           {(['chat', 'cervello', 'sessioni'] as const).map(tab => (
             <button
               key={tab}
@@ -459,10 +457,10 @@ Usa l'italiano e sii conciso ed efficace.`;
                   invoke<string[]>('get_sessions').then(setSessions);
                 }
               }}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold uppercase transition-all ${
+              className={`px-4 py-2 rounded-xl text-xs font-semibold uppercase tracking-wider transition-all duration-350 ${
                 activeTab === tab
-                  ? 'bg-glowCyan/10 text-glowCyan border border-glowCyan/20'
-                  : 'text-gray-400 hover:text-white hover:bg-darkSecondary/35'
+                  ? 'bg-glowCyan/10 border border-glowCyan/35 text-glowCyan shadow-[0_0_12px_rgba(102,252,241,0.1)]'
+                  : 'text-slate-400 hover:text-white hover:bg-white/[0.03] border border-transparent'
               }`}
             >
               {tab}
@@ -470,10 +468,12 @@ Usa l'italiano e sii conciso ed efficace.`;
           ))}
           <button
             onClick={() => setShowSettingsPanel(!showSettingsPanel)}
-            className="p-1.5 rounded-lg bg-darkSecondary border border-gray-700 hover:border-glowCyan text-gray-400 hover:text-white transition-all"
+            className={`p-2 rounded-xl bg-white/[0.03] border border-white/10 hover:border-glowCyan/60 text-slate-400 hover:text-glowCyan transition-all duration-350 ${
+              showSettingsPanel ? 'border-glowCyan text-glowCyan bg-glowCyan/5' : ''
+            }`}
             title="Impostazioni"
           >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-4.5 h-4.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
             </svg>
@@ -484,44 +484,44 @@ Usa l'italiano e sii conciso ed efficace.`;
       {/* Main Workspace Layout */}
       <div className="flex flex-1 overflow-hidden">
         {/* Sidebar panel */}
-        <div className={`w-80 bg-darkSecondary/35 border-r border-gray-850 p-4 flex flex-col gap-4 overflow-y-auto ${showSettingsPanel ? '' : 'hidden'}`}>
-          <div className="flex justify-between items-center pb-2 border-b border-gray-800">
-            <h3 className="font-semibold text-white text-sm">Pannello Impostazioni</h3>
-            <button onClick={() => setShowSettingsPanel(false)} className="text-gray-500 hover:text-white text-xs">Chiudi</button>
+        <div className={`w-80 bg-darkSecondary/30 border-r border-white/[0.02] p-5 flex flex-col gap-4 overflow-y-auto z-10 glass transition-all ${showSettingsPanel ? '' : 'hidden'}`}>
+          <div className="flex justify-between items-center pb-2 border-b border-white/[0.04]">
+            <h3 className="font-bold text-white text-xs tracking-wider uppercase">Pannello Impostazioni</h3>
+            <button onClick={() => setShowSettingsPanel(false)} className="text-slate-500 hover:text-white text-xs font-semibold transition-colors">Chiudi</button>
           </div>
 
           {/* API Keys configuration */}
-          <div className="space-y-3">
+          <div className="space-y-4">
             <div>
-              <label className="block text-xxs font-semibold uppercase text-gray-400 mb-1">Groq API Key</label>
+              <label className="block text-xxs font-semibold uppercase text-slate-400 tracking-wider mb-1">Groq API Key</label>
               <input
                 type="password"
                 value={settings.groq_api_key}
                 onChange={(e) => handleSaveSettings({ ...settings, groq_api_key: e.target.value })}
                 placeholder="gsk_..."
-                className="w-full bg-darkBg border border-gray-700 rounded-lg px-3 py-1.5 text-xs text-gray-300 focus:outline-none focus:border-glowCyan"
+                className="w-full premium-input text-xs px-3.5 py-2"
               />
             </div>
             <div>
-              <label className="block text-xxs font-semibold uppercase text-gray-400 mb-1">OpenRouter API Key</label>
+              <label className="block text-xxs font-semibold uppercase text-slate-400 tracking-wider mb-1">OpenRouter API Key</label>
               <input
                 type="password"
                 value={settings.openrouter_api_key}
                 onChange={(e) => handleSaveSettings({ ...settings, openrouter_api_key: e.target.value })}
                 placeholder="sk-or-..."
-                className="w-full bg-darkBg border border-gray-700 rounded-lg px-3 py-1.5 text-xs text-gray-300 focus:outline-none focus:border-glowCyan"
+                className="w-full premium-input text-xs px-3.5 py-2"
               />
             </div>
           </div>
 
           {/* AI Models configuration */}
-          <div className="space-y-3">
+          <div className="space-y-4 pt-2">
             <div>
-              <label className="block text-xxs font-semibold uppercase text-gray-400 mb-1">Modello Generatore (Groq)</label>
+              <label className="block text-xxs font-semibold uppercase text-slate-400 tracking-wider mb-1">Generatore (Groq)</label>
               <select
                 value={settings.groq_model}
                 onChange={(e) => handleSaveSettings({ ...settings, groq_model: e.target.value })}
-                className="w-full bg-darkBg border border-gray-700 rounded-lg px-2 py-1.5 text-xs text-gray-300 focus:outline-none focus:border-glowCyan"
+                className="w-full premium-input text-xs px-2.5 py-2"
               >
                 <option value="llama-3.3-70b-versatile">llama-3.3-70b-versatile</option>
                 <option value="gemma2-9b-it">gemma2-9b-it</option>
@@ -530,11 +530,11 @@ Usa l'italiano e sii conciso ed efficace.`;
               </select>
             </div>
             <div>
-              <label className="block text-xxs font-semibold uppercase text-gray-400 mb-1">Modello Verificatore (OpenRouter)</label>
+              <label className="block text-xxs font-semibold uppercase text-slate-400 tracking-wider mb-1">Verificatore (OpenRouter)</label>
               <select
                 value={settings.openrouter_model}
                 onChange={(e) => handleSaveSettings({ ...settings, openrouter_model: e.target.value })}
-                className="w-full bg-darkBg border border-gray-700 rounded-lg px-2 py-1.5 text-xs text-gray-300 focus:outline-none focus:border-glowCyan"
+                className="w-full premium-input text-xs px-2.5 py-2"
               >
                 <option value="qwen/qwen-2.5-72b-instruct:free">qwen/qwen-2.5-72b-instruct:free</option>
                 <option value="mistralai/mistral-7b-instruct:free">mistralai/mistral-7b-instruct:free</option>
@@ -542,11 +542,11 @@ Usa l'italiano e sii conciso ed efficace.`;
               </select>
             </div>
             <div>
-              <label className="block text-xxs font-semibold uppercase text-gray-400 mb-1">Modello Programmatore (OpenRouter)</label>
+              <label className="block text-xxs font-semibold uppercase text-slate-400 tracking-wider mb-1">Programmatore (OpenRouter)</label>
               <select
                 value={settings.openrouter_coder_model}
                 onChange={(e) => handleSaveSettings({ ...settings, openrouter_coder_model: e.target.value })}
-                className="w-full bg-darkBg border border-gray-700 rounded-lg px-2 py-1.5 text-xs text-gray-300 focus:outline-none focus:border-glowCyan"
+                className="w-full premium-input text-xs px-2.5 py-2"
               >
                 <option value="qwen/qwen-2.5-coder-32b-instruct:free">qwen/qwen-2.5-coder-32b-instruct:free</option>
                 <option value="meta-llama/llama-3.1-8b-instruct:free">meta-llama/llama-3.1-8b-instruct:free</option>
@@ -554,37 +554,37 @@ Usa l'italiano e sii conciso ed efficace.`;
             </div>
           </div>
 
-          {/* Audio options (TTS) */}
-          <div className="space-y-3 pt-2 border-t border-gray-800">
+          {/* Configuration options (Toggles) */}
+          <div className="space-y-3 pt-3 border-t border-white/[0.04]">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-medium text-gray-300">Sintesi Vocale (TTS)</span>
+              <span className="text-xs font-semibold text-slate-300">Sintesi Vocale (TTS)</span>
               <input
                 type="checkbox"
                 checked={settings.tts_enabled}
                 onChange={(e) => handleSaveSettings({ ...settings, tts_enabled: e.target.checked })}
-                className="rounded text-glowCyan focus:ring-glowCyan"
+                className="rounded border-white/20 text-glowCyan focus:ring-glowCyan bg-black/40"
               />
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-xs font-medium text-gray-300">Programmatore Attivo</span>
+              <span className="text-xs font-semibold text-slate-300">Programmatore (Coder)</span>
               <input
                 type="checkbox"
                 checked={settings.coder_enabled}
                 onChange={(e) => handleSaveSettings({ ...settings, coder_enabled: e.target.checked })}
-                className="rounded text-glowCyan focus:ring-glowCyan"
+                className="rounded border-white/20 text-glowCyan focus:ring-glowCyan bg-black/40"
               />
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-xs font-medium text-gray-300">Verificatore Attivo</span>
+              <span className="text-xs font-semibold text-slate-300">Verificatore (Verifier)</span>
               <input
                 type="checkbox"
                 checked={settings.verifier_enabled}
                 onChange={(e) => handleSaveSettings({ ...settings, verifier_enabled: e.target.checked })}
-                className="rounded text-glowCyan focus:ring-glowCyan"
+                className="rounded border-white/20 text-glowCyan focus:ring-glowCyan bg-black/40"
               />
             </div>
             <div>
-              <label className="block text-xxs font-semibold uppercase text-gray-400 mb-1">Velocità Voce (TTS Rate)</label>
+              <label className="block text-xxs font-semibold uppercase text-slate-400 tracking-wider mb-1">Velocità Voce ({settings.tts_rate}x)</label>
               <input
                 type="range"
                 min="0.8"
@@ -592,56 +592,51 @@ Usa l'italiano e sii conciso ed efficace.`;
                 step="0.05"
                 value={settings.tts_rate}
                 onChange={(e) => handleSaveSettings({ ...settings, tts_rate: parseFloat(e.target.value) })}
-                className="w-full accent-glowCyan"
+                className="w-full accent-glowCyan cursor-pointer h-1 rounded-lg bg-white/10"
               />
-              <div className="flex justify-between text-xxs text-gray-500">
-                <span>Lenta</span>
-                <span>{settings.tts_rate}x</span>
-                <span>Veloce</span>
-              </div>
             </div>
           </div>
 
-          {/* Log Window inside Settings */}
-          <div className="flex-1 flex flex-col pt-2 border-t border-gray-800">
-            <span className="text-xxs font-semibold uppercase text-gray-400 mb-1">Log di Sistema</span>
-            <div className="flex-1 bg-darkBg border border-gray-800 rounded-lg p-2 font-mono text-xxs overflow-y-auto max-h-40 text-gray-500 space-y-1">
+          {/* Log Window */}
+          <div className="flex-1 flex flex-col pt-3 border-t border-white/[0.04]">
+            <span className="text-xxs font-semibold uppercase text-slate-400 tracking-wider mb-1.5">Log di Sistema</span>
+            <div className="flex-1 bg-black/30 border border-white/[0.04] rounded-xl p-3 font-mono text-[10px] overflow-y-auto max-h-44 text-slate-500 space-y-1">
               {logs.map((log, idx) => (
-                <div key={idx} className="truncate">{log}</div>
+                <div key={idx} className="truncate select-text">{log}</div>
               ))}
             </div>
           </div>
         </div>
 
         {/* Dynamic Tab Area */}
-        <div className="flex-1 flex flex-col h-full bg-darkBg">
+        <div className="flex-1 flex flex-col h-full bg-transparent">
           {activeTab === 'chat' && (
             <div className="flex-1 flex flex-col overflow-hidden relative">
               {/* Reset Session & Info Bar */}
-              <div className="flex justify-between items-center px-6 py-2 bg-darkSecondary/25 border-b border-gray-850 text-xs text-gray-400">
+              <div className="flex justify-between items-center px-6 py-2.5 bg-white/[0.01] border-b border-white/[0.03] text-xxs text-slate-400">
                 <div className="flex items-center gap-2">
-                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                  <span>Modello Generatore: <strong className="text-white">{settings.groq_model}</strong></span>
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.6)] animate-pulse"></span>
+                  <span>Modello Attivo: <strong className="text-slate-200">{settings.groq_model}</strong></span>
                 </div>
                 <button
                   onClick={handleNewSession}
-                  className="px-2.5 py-1 bg-darkSecondary border border-gray-700 hover:border-glowCyan hover:text-white rounded text-xxs font-semibold uppercase transition-colors"
+                  className="px-3.5 py-1.5 bg-white/[0.03] border border-white/10 hover:border-glowCyan/65 hover:text-white rounded-lg text-xxs font-bold uppercase transition-all duration-300"
                 >
-                  Nuova Sessione
+                  Salva Sessione
                 </button>
               </div>
 
               {/* Chat bubble list */}
-              <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
+              <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5">
                 {messages.length === 0 ? (
-                  <div className="h-full flex flex-col items-center justify-center text-gray-500 space-y-3">
-                    <div className="w-16 h-16 rounded-2xl bg-darkSecondary border border-gray-800 flex items-center justify-center glow-shadow-cyan overflow-hidden">
-                      <img src="/logo.png" className="w-full h-full object-cover" alt="WolfMind Logo" />
+                  <div className="h-full flex flex-col items-center justify-center text-slate-500 space-y-4">
+                    <div className="w-24 h-24 rounded-3xl overflow-hidden border border-glowCyan/25 flex items-center justify-center bg-black/30 pulse-glow">
+                      <img src="/logo.png" className="w-20 h-20 object-contain" alt="WolfMind Logo" />
                     </div>
-                    <div className="text-center">
-                      <p className="text-sm font-semibold text-white">WolfMind Pronto ad Assisterti</p>
-                      <p className="text-xs text-gray-600 mt-1 max-w-xs">
-                        Parla o scrivi per avviare la conversazione in modalità <strong>{settings.active_mode.toUpperCase()}</strong>.
+                    <div className="text-center space-y-1 max-w-sm">
+                      <h2 className="text-lg font-bold text-white tracking-wide gradient-text-gold-cyan">Sistemi Pronti alla Conversazione</h2>
+                      <p className="text-xs text-slate-500 leading-relaxed">
+                        Parla o digita per avviare la sessione. Gli agenti di ottimizzazione e verifica sono attivi in modalità <strong className="text-glowCyan uppercase">{settings.active_mode}</strong>.
                       </p>
                     </div>
                   </div>
@@ -653,81 +648,86 @@ Usa l'italiano e sii conciso ed efficace.`;
                         msg.role === 'user' ? 'ml-auto items-end' : 'mr-auto items-start'
                       }`}
                     >
-                      <div className="text-xxs text-gray-550 mb-1 px-1">{msg.timestamp}</div>
+                      <div className="text-[10px] text-slate-500 mb-1 px-1">{msg.timestamp}</div>
                       
                       <div
-                        className={`rounded-xl px-4 py-3 border text-sm leading-relaxed ${
+                        className={`rounded-2xl px-5 py-3.5 border text-sm leading-relaxed ${
                           msg.role === 'user'
-                            ? 'bg-darkSecondary/80 border-gray-750 text-white'
-                            : 'bg-darkSecondary/40 border-gray-800 text-gray-200'
+                            ? 'bg-gradient-to-br from-indigo-950/60 to-purple-950/40 border-indigo-500/20 text-white shadow-xl'
+                            : 'bg-white/[0.03] border-white/5 backdrop-blur-md text-slate-250 shadow-xl'
                         }`}
                       >
                         {msg.isGenerating ? (
-                          <div className="flex items-center gap-2 py-1 text-glowCyan">
+                          <div className="flex items-center gap-3 py-1.5 text-glowCyan font-medium">
                             <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
                               <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                               <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                             </svg>
-                            <span>Generazione in corso...</span>
+                            <span>Generazione risposta in corso...</span>
                           </div>
                         ) : (
-                          <div className="whitespace-pre-wrap font-sans">{msg.content}</div>
+                          <div className="whitespace-pre-wrap font-sans font-normal leading-relaxed tracking-wide select-text">{msg.content}</div>
                         )}
                       </div>
 
                       {/* Verification badge & note */}
                       {msg.role === 'assistant' && msg.verification && (
-                        <div className="mt-2 w-full">
+                        <div className="mt-3.5 w-full space-y-2">
                           <div className="flex items-center gap-2">
                             {msg.verification.status === 'ok' && (
-                              <span className="inline-flex items-center gap-1 text-xs text-emerald-400 font-semibold bg-emerald-950/30 px-2 py-0.5 rounded border border-emerald-900/40">
-                                ✅ Verifica OK
+                              <span className="inline-flex items-center gap-1.5 text-xxs text-emerald-400 font-bold bg-emerald-950/30 px-3 py-1 rounded-lg border border-emerald-900/40 tracking-wider">
+                                ✅ VERIFICA SUPERATA
                               </span>
                             )}
                             {msg.verification.status === 'warning' && (
-                              <span className="inline-flex items-center gap-1 text-xs text-yellow-400 font-semibold bg-yellow-950/30 px-2 py-0.5 rounded border border-yellow-900/40">
-                                ⚠️ Dubbioso
+                              <span className="inline-flex items-center gap-1.5 text-xxs text-yellow-400 font-bold bg-yellow-950/30 px-3 py-1 rounded-lg border border-yellow-900/40 tracking-wider">
+                                ⚠️ RISCONTRI DUBBIOSI
                               </span>
                             )}
                             {msg.verification.status === 'error' && (
-                              <span className="inline-flex items-center gap-1 text-xs text-red-400 font-semibold bg-red-950/30 px-2 py-0.5 rounded border border-red-900/40">
-                                ❌ Errore
+                              <span className="inline-flex items-center gap-1.5 text-xxs text-red-400 font-bold bg-red-950/30 px-3 py-1 rounded-lg border border-red-900/40 tracking-wider">
+                                ❌ RILEVATI ERRORI
                               </span>
                             )}
                             {msg.verification.status === 'unavailable' && (
-                              <span className="inline-flex items-center gap-1 text-xs text-gray-400 font-semibold bg-gray-950/30 px-2 py-0.5 rounded border border-gray-900/40">
-                                ⚠️ Verifica Non Disponibile
+                              <span className="inline-flex items-center gap-1.5 text-xxs text-slate-400 font-bold bg-slate-950/30 px-3 py-1 rounded-lg border border-slate-900/40 tracking-wider">
+                                ⚠️ VERIFICA NON DISPONIBILE
                               </span>
                             )}
                           </div>
                           
-                          {/* Note text (expandable/visible for Warning and Error, or even OK if present) */}
+                          {/* Note text inside premium card */}
                           {msg.verification.note && (
-                            <details className="mt-1 text-xxs text-gray-450 border border-gray-850 rounded bg-darkBg/30 p-2 cursor-pointer">
-                              <summary className="font-semibold select-none text-gray-500">Nota del Verificatore</summary>
-                              <p className="mt-1 text-gray-400 leading-normal font-sans">{msg.verification.note}</p>
-                            </details>
+                            <div className="text-xxs text-slate-400 border border-white/[0.04] rounded-xl bg-black/25 p-3.5 leading-relaxed font-sans max-w-lg select-text shadow-inner">
+                              <div className="font-bold text-slate-500 uppercase tracking-wider mb-1 flex items-center gap-1">
+                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                                Dettagli Analisi
+                              </div>
+                              {msg.verification.note}
+                            </div>
                           )}
                         </div>
                       )}
 
                       {/* Export buttons for Mode results */}
                       {msg.role === 'assistant' && !msg.isGenerating && settings.active_mode !== 'chat' && (
-                        <div className="mt-2 flex gap-2">
+                        <div className="mt-2.5 flex gap-2">
                           <button
                             onClick={() => handleExportModeContent(msg)}
-                            className="inline-flex items-center gap-1 text-xxs text-glowCyan hover:text-white bg-darkSecondary/80 hover:bg-darkSecondary px-2.5 py-1 rounded border border-gray-800 hover:border-glowCyan transition-all"
+                            className="inline-flex items-center gap-1.5 text-xxs text-glowCyan hover:text-white bg-glowCyan/5 hover:bg-glowCyan/15 px-3 py-1.5 rounded-xl border border-glowCyan/25 hover:border-glowCyan transition-all duration-300 font-semibold"
                           >
                             {settings.active_mode === 'articolo' ? (
                               <>
-                                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
                                 </svg>
                                 Copia HTML
                               </>
                             ) : (
                               <>
-                                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
                                 </svg>
                                 Salva MD
@@ -743,19 +743,19 @@ Usa l'italiano e sii conciso ed efficace.`;
               </div>
 
               {/* Chat Input form */}
-              <form onSubmit={handleSendMessage} className="p-4 bg-darkSecondary/20 border-t border-gray-850 flex items-center gap-3">
+              <form onSubmit={handleSendMessage} className="p-5 bg-darkSecondary/30 border-t border-white/[0.03] flex items-center gap-3.5 backdrop-blur-md">
                 <button
                   type="button"
                   onClick={toggleListening}
-                  className={`p-3 rounded-xl border transition-all ${
+                  className={`p-3.5 rounded-2xl border transition-all duration-350 shadow-md ${
                     isListening
-                      ? 'bg-red-950/40 text-red-400 border-red-500/50 animate-pulse shadow-md shadow-red-900/10'
-                      : 'bg-darkBg text-glowCyan border-gray-850 hover:border-glowCyan'
+                      ? 'bg-red-950/40 text-red-400 border-red-500/60 animate-pulse shadow-red-900/20'
+                      : 'bg-black/35 text-glowCyan border-white/5 hover:border-glowCyan/50 hover:bg-glowCyan/5'
                   }`}
                   title={isListening ? "Ferma ascolto" : "Parla"}
                 >
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
                   </svg>
                 </button>
 
@@ -763,19 +763,19 @@ Usa l'italiano e sii conciso ed efficace.`;
                   type="text"
                   value={inputText}
                   onChange={(e) => setInputText(e.target.value)}
-                  placeholder={isListening ? "Ascolto in corso..." : `Messaggio in modalità ${settings.active_mode.toUpperCase()}...`}
-                  className="flex-1 bg-darkBg text-sm border border-gray-850 rounded-xl px-4 py-3 text-gray-250 focus:outline-none focus:border-glowCyan transition-colors"
+                  placeholder={isListening ? "Riconoscimento vocale attivo..." : `Invia un messaggio in modalità ${settings.active_mode.toUpperCase()}...`}
+                  className="flex-1 premium-input px-4.5 py-3.5 text-sm"
                   disabled={isListening}
                 />
 
                 <button
                   type="submit"
                   disabled={!inputText.trim()}
-                  className="p-3 bg-darkBg text-glowCyan border border-gray-850 hover:border-glowCyan disabled:border-gray-850 disabled:text-gray-600 rounded-xl transition-all font-semibold"
+                  className="p-3.5 bg-glowCyan/10 text-glowCyan border border-glowCyan/25 hover:border-glowCyan disabled:border-white/5 disabled:text-slate-700 rounded-2xl transition-all duration-300 font-semibold shadow-md glow-shadow-cyan-hover"
                   title="Invia"
                 >
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
                   </svg>
                 </button>
               </form>
@@ -791,55 +791,56 @@ Usa l'italiano e sii conciso ed efficace.`;
           )}
 
           {activeTab === 'sessioni' && (
-            <div className="flex h-full w-full gap-4 p-4 text-gray-200">
+            <div className="flex h-full w-full gap-5 p-6 text-slate-200">
               {/* Sessions List */}
-              <div className="flex w-1/3 flex-col rounded-xl glass border border-gray-800 p-4">
-                <h3 className="text-lg font-semibold glow-text-cyan flex items-center gap-2 mb-4">
-                  <svg className="w-5 h-5 text-glowCyan" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              <div className="flex w-80 flex-col rounded-2xl glass p-4 border border-white/[0.03] shadow-2xl">
+                <h3 className="text-sm font-semibold tracking-wide uppercase text-white glow-cyan flex items-center gap-2 mb-4">
+                  <svg className="w-4 h-4 text-glowCyan" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
                   Sessioni Salvate
                 </h3>
-                <div className="flex-1 overflow-y-auto space-y-1">
+                <div className="flex-1 overflow-y-auto space-y-1.5">
                   {sessions.length === 0 ? (
-                    <p className="text-gray-500 text-center text-xs py-8">Nessun file sessione presente</p>
+                    <p className="text-slate-500 text-center text-xs py-8">Nessun file sessione presente</p>
                   ) : (
-                    sessions.map((name) => (
-                      <div
-                        key={name}
-                        onClick={() => {
-                          setSelectedSessionName(name);
-                          viewSessionContent(name);
-                        }}
-                        className={`p-2.5 rounded-lg cursor-pointer transition-all border ${
-                          selectedSessionName === name
-                            ? 'bg-darkSecondary border-glowCyan text-white'
-                            : 'bg-transparent border-transparent hover:bg-darkSecondary hover:text-white'
-                        }`}
-                      >
-                        <span className="text-xs truncate font-medium block">{name}</span>
-                      </div>
-                    ))
+                    sessions.map((name) => {
+                      const isSelected = selectedSessionName === name;
+                      return (
+                        <div
+                          key={name}
+                          onClick={() => {
+                            setSelectedSessionName(name);
+                            viewSessionContent(name);
+                          }}
+                          className={`p-3 rounded-xl cursor-pointer transition-all duration-300 border ${
+                            isSelected
+                              ? 'bg-gradient-to-r from-glowCyan/15 to-indigo-500/10 border-glowCyan/50 text-white shadow-[0_0_15px_rgba(102,252,241,0.1)] border-l-[3px]'
+                              : 'bg-white/[0.02] border-white/[0.02] hover:bg-white/[0.05] hover:border-white/[0.06] hover:text-white'
+                          }`}
+                        >
+                          <span className="text-xs truncate font-medium block">{name}</span>
+                        </div>
+                      );
+                    })
                   )}
                 </div>
               </div>
 
               {/* View Panel */}
-              <div className="flex-1 flex flex-col rounded-xl glass border border-gray-800 p-4">
+              <div className="flex-1 flex flex-col rounded-2xl glass border border-white/[0.03] p-5 shadow-2xl">
                 {selectedSessionName ? (
                   <div className="flex-1 flex flex-col h-full">
-                    <div className="flex justify-between items-center mb-3">
-                      <span className="text-sm font-semibold text-white">{selectedSessionName}</span>
+                    <div className="flex justify-between items-center mb-4">
+                      <span className="text-sm font-semibold tracking-wide text-white">{selectedSessionName}</span>
                     </div>
-                    {/* Render raw content of the session log */}
-                    <div className="flex-1 w-full bg-darkBg text-gray-300 font-mono text-xs p-4 rounded-lg border border-gray-800 overflow-y-auto whitespace-pre-wrap leading-relaxed">
-                      {/* We will load the actual content using a Tauri command */}
+                    <div className="flex-1 w-full bg-black/35 text-slate-300 font-mono text-xs p-5 rounded-xl border border-white/[0.04] overflow-y-auto whitespace-pre-wrap leading-relaxed select-text">
                       {selectedSessionContent || 'Caricamento contenuto sessione...'}
                     </div>
                   </div>
                 ) : (
-                  <div className="flex-1 flex flex-col items-center justify-center text-gray-500">
-                    <p className="text-sm font-medium">Seleziona una sessione per visualizzarla</p>
+                  <div className="flex-1 flex flex-col items-center justify-center text-slate-500">
+                    <p className="text-sm font-semibold">Seleziona una sessione per visualizzarla</p>
                   </div>
                 )}
               </div>
@@ -849,14 +850,15 @@ Usa l'italiano e sii conciso ed efficace.`;
       </div>
 
       {/* Footer bar */}
-      <footer className="flex items-center justify-between px-6 py-2 bg-darkSecondary/90 border-t border-gray-850 text-xxs text-gray-500">
+      <footer className="flex items-center justify-between px-6 py-2.5 bg-darkSecondary/65 border-t border-white/[0.02] text-[10px] text-slate-500 font-medium tracking-wide">
         <div className="flex items-center gap-2">
-          <span className="w-1.5 h-1.5 rounded-full bg-cyan-400"></span>
-          <span>Stato: <strong className="text-gray-300">{statusText}</strong></span>
+          <span className="w-1.5 h-1.5 rounded-full bg-glowCyan shadow-[0_0_6px_rgba(102,252,241,0.8)]"></span>
+          <span>Sistema: <strong className="text-slate-350">{statusText}</strong></span>
         </div>
-        <div className="flex items-center gap-4">
-          <span>Verifica: <strong className={settings.verifier_enabled ? "text-emerald-400" : "text-gray-400"}>{settings.verifier_enabled ? "ON" : "OFF"}</strong></span>
-          <span>Modalità: <strong className="text-glowCyan uppercase">{settings.active_mode}</strong></span>
+        <div className="flex items-center gap-5">
+          <span>Verifica: <strong className={settings.verifier_enabled ? "text-emerald-400" : "text-slate-500"}>{settings.verifier_enabled ? "ATTIVA" : "DISATTIVA"}</strong></span>
+          <span>Programmatore: <strong className={settings.coder_enabled ? "text-indigo-400" : "text-slate-500"}>{settings.coder_enabled ? "ATTIVO" : "DISATTIVO"}</strong></span>
+          <span>Modalità: <strong className="text-glowCyan uppercase font-semibold">{settings.active_mode}</strong></span>
         </div>
       </footer>
     </div>
