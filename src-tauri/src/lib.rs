@@ -45,6 +45,8 @@ fn ensure_dirs_and_defaults() -> Result<(), String> {
   "openrouter_api_key": "",
   "groq_model": "llama-3.3-70b-versatile",
   "openrouter_model": "qwen/qwen-2.5-72b-instruct:free",
+  "coder_enabled": true,
+  "openrouter_coder_model": "qwen/qwen-2.5-coder-32b-instruct:free",
   "tts_enabled": true,
   "tts_voice": "auto-italian",
   "tts_rate": 1.05,

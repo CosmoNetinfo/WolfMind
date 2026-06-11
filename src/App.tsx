@@ -1,13 +1,15 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import CervelloTab from './components/CervelloTab';
-import { sendMessageToGroq, verifyResponseWithOpenRouter, ChatMessage, VerificationResult } from './services/ai';
+import { sendMessageToGroq, verifyResponseWithOpenRouter, refineCodeWithCoderAgent, ChatMessage, VerificationResult } from './services/ai';
 
 interface AppSettings {
   groq_api_key: string;
   openrouter_api_key: string;
   groq_model: string;
   openrouter_model: string;
+  coder_enabled: boolean;
+  openrouter_coder_model: string;
   tts_enabled: boolean;
   tts_voice: string;
   tts_rate: number;
@@ -34,6 +36,8 @@ export default function App() {
     openrouter_api_key: '',
     groq_model: 'llama-3.3-70b-versatile',
     openrouter_model: 'qwen/qwen-2.5-72b-instruct:free',
+    coder_enabled: true,
+    openrouter_coder_model: 'qwen/qwen-2.5-coder-32b-instruct:free',
     tts_enabled: true,
     tts_voice: 'auto-italian',
     tts_rate: 1.05,
@@ -257,12 +261,30 @@ export default function App() {
 
     try {
       // 1. Generator Agent (Groq)
-      const aiResponse = await sendMessageToGroq(
+      let aiResponse = await sendMessageToGroq(
         settings.groq_api_key,
         settings.groq_model,
         compiledSystemPrompt,
         history
       );
+
+      // 1.5 Coder Agent (OpenRouter) - Refines code output if detected or in tech mode
+      if (settings.coder_enabled && settings.openrouter_api_key && (aiResponse.includes('```') || settings.active_mode === 'brief')) {
+        setStatusText('Ottimizzazione codice...');
+        try {
+          const refinedResponse = await refineCodeWithCoderAgent(
+            settings.openrouter_api_key,
+            settings.openrouter_coder_model,
+            userQuery,
+            aiResponse,
+            kbContext
+          );
+          aiResponse = refinedResponse;
+          addLog(`Codice ottimizzato con successo dall'Agente Programmatore.`);
+        } catch (coderError: any) {
+          addLog(`Errore Agente Programmatore (uso risposta originale): ${coderError.message}`);
+        }
+      }
 
       setMessages(prev => prev.map(m => m.id === assistantMsgId ? { ...m, content: aiResponse, isGenerating: false } : m));
       addLog(`Groq generato con successo: ${aiResponse.slice(0, 50)}...`);
@@ -518,6 +540,17 @@ Usa l'italiano e sii conciso ed efficace.`;
                 <option value="deepseek/deepseek-r1:free">deepseek/deepseek-r1:free</option>
               </select>
             </div>
+            <div>
+              <label className="block text-xxs font-semibold uppercase text-gray-400 mb-1">Modello Programmatore (OpenRouter)</label>
+              <select
+                value={settings.openrouter_coder_model}
+                onChange={(e) => handleSaveSettings({ ...settings, openrouter_coder_model: e.target.value })}
+                className="w-full bg-darkBg border border-gray-700 rounded-lg px-2 py-1.5 text-xs text-gray-300 focus:outline-none focus:border-glowCyan"
+              >
+                <option value="qwen/qwen-2.5-coder-32b-instruct:free">qwen/qwen-2.5-coder-32b-instruct:free</option>
+                <option value="meta-llama/llama-3.1-8b-instruct:free">meta-llama/llama-3.1-8b-instruct:free</option>
+              </select>
+            </div>
           </div>
 
           {/* Audio options (TTS) */}
@@ -528,6 +561,15 @@ Usa l'italiano e sii conciso ed efficace.`;
                 type="checkbox"
                 checked={settings.tts_enabled}
                 onChange={(e) => handleSaveSettings({ ...settings, tts_enabled: e.target.checked })}
+                className="rounded text-glowCyan focus:ring-glowCyan"
+              />
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-medium text-gray-300">Programmatore Attivo</span>
+              <input
+                type="checkbox"
+                checked={settings.coder_enabled}
+                onChange={(e) => handleSaveSettings({ ...settings, coder_enabled: e.target.checked })}
                 className="rounded text-glowCyan focus:ring-glowCyan"
               />
             </div>

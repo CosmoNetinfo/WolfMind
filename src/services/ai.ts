@@ -183,3 +183,68 @@ Fornisci la tua verifica strutturata esclusivamente in JSON come richiesto.`;
     };
   }
 }
+
+/**
+ * Sends a code refinement request to OpenRouter API (Coder Agent)
+ */
+export async function refineCodeWithCoderAgent(
+  apiKey: string,
+  model: string,
+  originalUserPrompt: string,
+  generatorResponse: string,
+  kbContext: string
+): Promise<string> {
+  if (!apiKey) {
+    throw new Error("API Key di OpenRouter mancante per l'Agente Programmatore.");
+  }
+
+  const coderSystemPrompt = `Sei l'Agente Programmatore di WolfMind. Il tuo compito è analizzare la risposta tecnica del Generatore e assicurarti che tutti i blocchi di codice o di markup presenti siano completi (nessun segnaposto o commento incompleto), sintatticamente corretti, privi di bug e scritti secondo le best practice.
+Riscrivi la risposta ottimizzando esclusivamente le porzioni di codice o di markup, lasciando intatto il testo circostante. Se non è presente alcun codice, restituisci la risposta originale intatta.`;
+
+  const userPrompt = `RICHIESTA UTENTE:
+"""
+${originalUserPrompt}
+"""
+
+CONTESTO KB:
+"""
+${kbContext}
+"""
+
+RISPOSTA GENERATORE:
+"""
+${generatorResponse}
+"""
+
+Fornisci la versione finale ottimizzata mantenendo la stessa struttura della risposta originale.`;
+
+  try {
+    const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`,
+        'HTTP-Referer': 'https://github.com/tauri-apps/tauri',
+        'X-Title': 'WolfMind Desktop Agent'
+      },
+      body: JSON.stringify({
+        model: model || 'qwen/qwen-2.5-coder-32b-instruct:free',
+        messages: [
+          { role: 'system', content: coderSystemPrompt },
+          { role: 'user', content: userPrompt }
+        ]
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error(`Errore API Programmatore (Status ${response.status})`);
+    }
+
+    const data = await response.json();
+    return data.choices[0]?.message?.content || generatorResponse;
+  } catch (error: any) {
+    console.error("OpenRouter Coder error:", error);
+    throw new Error(error.message || "Errore durante il raffinamento del codice.");
+  }
+}
+
