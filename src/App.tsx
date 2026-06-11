@@ -431,7 +431,7 @@ Usa l'italiano e sii conciso ed efficace.`;
   return (
     <div className="flex flex-col h-screen w-screen bg-darkBg text-slate-800 font-sans selection:bg-glowCyan/20 selection:text-slate-900">
       {/* Header bar */}
-      <header className="flex items-center justify-between px-6 py-4 bg-darkSecondary/50 border-b border-sky-100/40 glass shadow-md z-10">
+      <header className="flex items-center justify-between px-6 py-4 bg-white/90 border-b border-sky-100/45 glass shadow-md z-10">
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2">
             <img src="/WolfMidLogo.png" className="w-9 h-9 object-contain" alt="Logo" />
@@ -494,7 +494,7 @@ Usa l'italiano e sii conciso ed efficace.`;
       {/* Main Workspace Layout */}
       <div className="flex flex-1 overflow-hidden">
         {/* Sidebar panel */}
-        <div className={`w-80 bg-darkSecondary/60 border-r border-sky-100/30 p-5 flex flex-col gap-4 overflow-y-auto z-10 glass transition-all ${showSettingsPanel ? '' : 'hidden'}`}>
+        <div className={`w-80 bg-white/95 border-r border-sky-100/40 p-5 flex flex-col gap-4 overflow-y-auto z-10 glass transition-all ${showSettingsPanel ? '' : 'hidden'}`}>
           <div className="flex justify-between items-center pb-2 border-b border-slate-200">
             <h3 className="font-bold text-slate-800 text-xs tracking-wider uppercase">Pannello Impostazioni</h3>
             <button onClick={() => setShowSettingsPanel(false)} className="text-slate-500 hover:text-slate-800 text-xs font-semibold transition-colors">Chiudi</button>
@@ -751,7 +751,7 @@ Usa l'italiano e sii conciso ed efficace.`;
               </div>
 
               {/* Chat Input form */}
-              <form onSubmit={handleSendMessage} className="p-5 bg-darkSecondary/50 border-t border-sky-100/40 flex items-center gap-3.5 backdrop-blur-md">
+              <form onSubmit={handleSendMessage} className="p-5 bg-white/95 border-t border-sky-100/40 flex items-center gap-3.5 backdrop-blur-md">
                 <button
                   type="button"
                   onClick={toggleListening}
@@ -859,10 +859,10 @@ Usa l'italiano e sii conciso ed efficace.`;
       </div>
 
       {/* Footer bar */}
-      <footer className="flex items-center justify-between px-6 py-2.5 bg-darkSecondary/65 border-t border-white/[0.02] text-[10px] text-slate-500 font-medium tracking-wide">
+      <footer className="flex items-center justify-between px-6 py-2.5 bg-white/90 border-t border-sky-100/40 text-[10px] text-slate-500 font-medium tracking-wide">
         <div className="flex items-center gap-2">
           <span className="w-1.5 h-1.5 rounded-full bg-glowCyan shadow-[0_0_6px_rgba(102,252,241,0.8)]"></span>
-          <span>Sistema: <strong className="text-slate-350">{statusText}</strong></span>
+          <span>Sistema: <strong className="text-slate-700">{statusText}</strong></span>
         </div>
         <div className="flex items-center gap-5">
           <span>Verifica: <strong className={settings.verifier_enabled ? "text-emerald-400" : "text-slate-500"}>{settings.verifier_enabled ? "ATTIVA" : "DISATTIVA"}</strong></span>
