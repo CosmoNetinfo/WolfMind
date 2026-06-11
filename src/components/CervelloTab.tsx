@@ -82,11 +82,11 @@ export default function CervelloTab({ onRefreshKB, kbFiles, onLog, onShowToast }
   );
 
   return (
-    <div className="flex h-full w-full gap-5 p-6 text-slate-200">
+    <div className="flex h-full w-full gap-5 p-6 text-slate-700">
       {/* File List Panel */}
-      <div className="flex w-80 flex-col rounded-2xl glass p-4 border border-white/[0.03] shadow-2xl">
+      <div className="flex w-80 flex-col rounded-2xl glass p-4 border border-sky-100/40 shadow-xl">
         <div className="flex justify-between items-center mb-4">
-          <h3 className="text-sm font-semibold tracking-wide uppercase text-white glow-cyan flex items-center gap-2">
+          <h3 className="text-sm font-semibold tracking-wide uppercase text-slate-800 glow-cyan flex items-center gap-2">
             <svg className="w-4 h-4 text-glowCyan animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
             </svg>
@@ -94,7 +94,7 @@ export default function CervelloTab({ onRefreshKB, kbFiles, onLog, onShowToast }
           </h3>
           <button
             onClick={() => setIsCreating(!isCreating)}
-            className="p-1.5 rounded-xl bg-white/[0.03] border border-white/10 hover:border-glowCyan hover:bg-glowCyan/10 text-gray-400 hover:text-glowCyan transition-all duration-300"
+            className="p-1.5 rounded-xl bg-white border border-slate-200 hover:border-glowCyan hover:bg-glowCyan/10 text-slate-500 hover:text-glowCyan transition-all duration-300 shadow-sm"
             title="Nuovo File"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -118,7 +118,7 @@ export default function CervelloTab({ onRefreshKB, kbFiles, onLog, onShowToast }
         </div>
 
         {isCreating && (
-          <form onSubmit={handleCreateFile} className="mb-4 p-3 bg-black/45 rounded-xl border border-white/[0.05] flex gap-2">
+          <form onSubmit={handleCreateFile} className="mb-4 p-3 bg-slate-100 rounded-xl border border-slate-200 flex gap-2">
             <input
               type="text"
               placeholder="nome-file.md"
@@ -145,8 +145,8 @@ export default function CervelloTab({ onRefreshKB, kbFiles, onLog, onShowToast }
                   onClick={() => handleSelectFile(name)}
                   className={`group flex items-center justify-between p-3 rounded-xl cursor-pointer transition-all duration-300 border ${
                     isSelected
-                      ? 'bg-gradient-to-r from-glowCyan/15 to-indigo-500/10 border-glowCyan/50 text-white shadow-[0_0_15px_rgba(102,252,241,0.1)] border-l-[3px]'
-                      : 'bg-white/[0.02] border-white/[0.02] hover:bg-white/[0.05] hover:border-white/[0.06] hover:text-white'
+                      ? 'bg-gradient-to-r from-glowCyan/15 to-glowBlue/5 border-glowCyan text-glowCyan shadow-sm border-l-[3px]'
+                      : 'bg-white border-slate-200 hover:bg-slate-50 hover:border-slate-300 hover:text-slate-900'
                   }`}
                 >
                   <div className="flex items-center gap-2.5 overflow-hidden">
@@ -178,12 +178,12 @@ export default function CervelloTab({ onRefreshKB, kbFiles, onLog, onShowToast }
       </div>
 
       {/* Editor Panel */}
-      <div className="flex-1 flex flex-col rounded-2xl glass border border-white/[0.03] p-5 shadow-2xl">
+      <div className="flex-1 flex flex-col rounded-2xl glass border border-sky-100/40 p-5 shadow-xl">
         {selectedFile ? (
           <div className="flex-1 flex flex-col h-full">
             <div className="flex justify-between items-center mb-4">
               <div className="flex items-center gap-2">
-                <span className="text-sm font-semibold tracking-wide text-white">{selectedFile}</span>
+                <span className="text-sm font-semibold tracking-wide text-slate-800">{selectedFile}</span>
                 <span className="text-xxs px-2.5 py-0.5 rounded-full bg-glowCyan/10 border border-glowCyan/20 text-glowCyan font-medium">Markdown</span>
               </div>
               <button
@@ -199,7 +199,7 @@ export default function CervelloTab({ onRefreshKB, kbFiles, onLog, onShowToast }
             <textarea
               value={editorContent}
               onChange={(e) => setEditorContent(e.target.value)}
-              className="flex-1 w-full bg-black/35 text-slate-350 font-mono text-xs p-5 rounded-xl border border-white/[0.04] focus:outline-none focus:border-glowCyan resize-none leading-relaxed"
+              className="flex-1 w-full bg-white text-slate-800 font-mono text-xs p-5 rounded-xl border border-slate-200 focus:outline-none focus:border-glowCyan resize-none leading-relaxed shadow-inner"
               placeholder="Scrivi qui in Markdown..."
             />
           </div>

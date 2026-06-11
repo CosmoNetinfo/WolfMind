@@ -10,11 +10,11 @@ export default {
         sans: ['Outfit', 'sans-serif'],
       },
       colors: {
-        darkBg: '#090a0f',
-        darkSecondary: '#12141c',
-        glowCyan: '#38bdf8',
+        darkBg: '#f0f9ff',
+        darkSecondary: '#ffffff',
+        glowCyan: '#0284c7',
         glowBlue: '#1d4ed8',
-        textMuted: '#64748b',
+        textMuted: '#475569',
       }
     },
   },

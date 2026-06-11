@@ -429,9 +429,9 @@ Usa l'italiano e sii conciso ed efficace.`;
   };
 
   return (
-    <div className="flex flex-col h-screen w-screen bg-darkBg text-slate-100 font-sans selection:bg-glowCyan/30 selection:text-white">
+    <div className="flex flex-col h-screen w-screen bg-darkBg text-slate-800 font-sans selection:bg-glowCyan/20 selection:text-slate-900">
       {/* Header bar */}
-      <header className="flex items-center justify-between px-6 py-4 bg-darkSecondary/40 border-b border-white/[0.03] glass shadow-lg z-10">
+      <header className="flex items-center justify-between px-6 py-4 bg-darkSecondary/50 border-b border-sky-100/40 glass shadow-md z-10">
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2">
             <img src="/WolfMidLogo.png" className="w-9 h-9 object-contain" alt="Logo" />
@@ -439,15 +439,15 @@ Usa l'italiano e sii conciso ed efficace.`;
               WolfMind
             </span>
           </div>
-          <div className="flex rounded-xl bg-black/40 p-1 border border-white/[0.04]">
+          <div className="flex rounded-xl bg-slate-150 p-1 border border-slate-200/50">
             {(['chat', 'articolo', 'brief'] as const).map(mode => (
               <button
                 key={mode}
                 onClick={() => handleSaveSettings({ ...settings, active_mode: mode })}
                 className={`px-4 py-1.5 rounded-lg text-xs font-semibold uppercase tracking-wider transition-all duration-300 ${
                   settings.active_mode === mode
-                    ? 'gradient-active text-white font-bold'
-                    : 'text-slate-450 hover:text-white'
+                    ? 'gradient-active font-bold'
+                    : 'text-slate-650 hover:text-slate-900'
                 }`}
               >
                 {mode === 'brief' ? 'BRIEF DEV' : mode}
@@ -469,8 +469,8 @@ Usa l'italiano e sii conciso ed efficace.`;
               }}
               className={`px-4 py-2 rounded-xl text-xs font-semibold uppercase tracking-wider transition-all duration-350 ${
                 activeTab === tab
-                  ? 'bg-glowCyan/10 border border-glowCyan/35 text-glowCyan shadow-[0_0_12px_rgba(102,252,241,0.1)]'
-                  : 'text-slate-400 hover:text-white hover:bg-white/[0.03] border border-transparent'
+                  ? 'bg-glowCyan/15 border border-glowCyan/45 text-glowCyan shadow-[0_0_12px_rgba(2,132,199,0.08)]'
+                  : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100 border border-transparent'
               }`}
             >
               {tab}
@@ -478,8 +478,8 @@ Usa l'italiano e sii conciso ed efficace.`;
           ))}
           <button
             onClick={() => setShowSettingsPanel(!showSettingsPanel)}
-            className={`p-2 rounded-xl bg-white/[0.03] border border-white/10 hover:border-glowCyan/60 text-slate-400 hover:text-glowCyan transition-all duration-350 ${
-              showSettingsPanel ? 'border-glowCyan text-glowCyan bg-glowCyan/5' : ''
+            className={`p-2 rounded-xl bg-slate-100 border border-slate-200 hover:border-glowCyan/60 text-slate-500 hover:text-glowCyan transition-all duration-350 ${
+              showSettingsPanel ? 'border-glowCyan text-glowCyan bg-glowCyan/10' : ''
             }`}
             title="Impostazioni"
           >
@@ -494,10 +494,10 @@ Usa l'italiano e sii conciso ed efficace.`;
       {/* Main Workspace Layout */}
       <div className="flex flex-1 overflow-hidden">
         {/* Sidebar panel */}
-        <div className={`w-80 bg-darkSecondary/30 border-r border-white/[0.02] p-5 flex flex-col gap-4 overflow-y-auto z-10 glass transition-all ${showSettingsPanel ? '' : 'hidden'}`}>
-          <div className="flex justify-between items-center pb-2 border-b border-white/[0.04]">
-            <h3 className="font-bold text-white text-xs tracking-wider uppercase">Pannello Impostazioni</h3>
-            <button onClick={() => setShowSettingsPanel(false)} className="text-slate-500 hover:text-white text-xs font-semibold transition-colors">Chiudi</button>
+        <div className={`w-80 bg-darkSecondary/60 border-r border-sky-100/30 p-5 flex flex-col gap-4 overflow-y-auto z-10 glass transition-all ${showSettingsPanel ? '' : 'hidden'}`}>
+          <div className="flex justify-between items-center pb-2 border-b border-slate-200">
+            <h3 className="font-bold text-slate-800 text-xs tracking-wider uppercase">Pannello Impostazioni</h3>
+            <button onClick={() => setShowSettingsPanel(false)} className="text-slate-500 hover:text-slate-800 text-xs font-semibold transition-colors">Chiudi</button>
           </div>
 
           {/* API Keys configuration */}
@@ -565,32 +565,32 @@ Usa l'italiano e sii conciso ed efficace.`;
           </div>
 
           {/* Configuration options (Toggles) */}
-          <div className="space-y-3 pt-3 border-t border-white/[0.04]">
+          <div className="space-y-3 pt-3 border-t border-slate-200">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-slate-300">Sintesi Vocale (TTS)</span>
+              <span className="text-xs font-semibold text-slate-700">Sintesi Vocale (TTS)</span>
               <input
                 type="checkbox"
                 checked={settings.tts_enabled}
                 onChange={(e) => handleSaveSettings({ ...settings, tts_enabled: e.target.checked })}
-                className="rounded border-white/20 text-glowCyan focus:ring-glowCyan bg-black/40"
+                className="rounded border-slate-300 text-glowCyan focus:ring-glowCyan bg-white"
               />
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-slate-300">Programmatore (Coder)</span>
+              <span className="text-xs font-semibold text-slate-700">Programmatore (Coder)</span>
               <input
                 type="checkbox"
                 checked={settings.coder_enabled}
                 onChange={(e) => handleSaveSettings({ ...settings, coder_enabled: e.target.checked })}
-                className="rounded border-white/20 text-glowCyan focus:ring-glowCyan bg-black/40"
+                className="rounded border-slate-300 text-glowCyan focus:ring-glowCyan bg-white"
               />
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-slate-300">Verificatore (Verifier)</span>
+              <span className="text-xs font-semibold text-slate-700">Verificatore (Verifier)</span>
               <input
                 type="checkbox"
                 checked={settings.verifier_enabled}
                 onChange={(e) => handleSaveSettings({ ...settings, verifier_enabled: e.target.checked })}
-                className="rounded border-white/20 text-glowCyan focus:ring-glowCyan bg-black/40"
+                className="rounded border-slate-300 text-glowCyan focus:ring-glowCyan bg-white"
               />
             </div>
             <div>
@@ -608,9 +608,9 @@ Usa l'italiano e sii conciso ed efficace.`;
           </div>
 
           {/* Log Window */}
-          <div className="flex-1 flex flex-col pt-3 border-t border-white/[0.04]">
-            <span className="text-xxs font-semibold uppercase text-slate-400 tracking-wider mb-1.5">Log di Sistema</span>
-            <div className="flex-1 bg-black/30 border border-white/[0.04] rounded-xl p-3 font-mono text-[10px] overflow-y-auto max-h-44 text-slate-500 space-y-1">
+          <div className="flex-1 flex flex-col pt-3 border-t border-slate-200">
+            <span className="text-xxs font-semibold uppercase text-slate-500 tracking-wider mb-1.5">Log di Sistema</span>
+            <div className="flex-1 bg-slate-100 border border-slate-200/60 rounded-xl p-3 font-mono text-[10px] overflow-y-auto max-h-44 text-slate-600 space-y-1">
               {logs.map((log, idx) => (
                 <div key={idx} className="truncate select-text">{log}</div>
               ))}
@@ -623,14 +623,14 @@ Usa l'italiano e sii conciso ed efficace.`;
           {activeTab === 'chat' && (
             <div className="flex-1 flex flex-col overflow-hidden relative">
               {/* Reset Session & Info Bar */}
-              <div className="flex justify-between items-center px-6 py-2.5 bg-white/[0.01] border-b border-white/[0.03] text-xxs text-slate-400">
+              <div className="flex justify-between items-center px-6 py-2.5 bg-white/40 border-b border-sky-100/40 text-xxs text-slate-500">
                 <div className="flex items-center gap-2">
-                  <span className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.6)] animate-pulse"></span>
-                  <span>Modello Attivo: <strong className="text-slate-200">{settings.groq_model}</strong></span>
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.3)] animate-pulse"></span>
+                  <span>Modello Attivo: <strong className="text-slate-800">{settings.groq_model}</strong></span>
                 </div>
                 <button
                   onClick={handleNewSession}
-                  className="px-3.5 py-1.5 bg-white/[0.03] border border-white/10 hover:border-glowCyan/65 hover:text-white rounded-lg text-xxs font-bold uppercase transition-all duration-300"
+                  className="px-3.5 py-1.5 bg-white border border-slate-200 hover:border-glowCyan/65 hover:text-glowCyan rounded-lg text-xxs font-bold uppercase transition-all duration-300 shadow-sm"
                 >
                   Salva Sessione
                 </button>
@@ -642,7 +642,7 @@ Usa l'italiano e sii conciso ed efficace.`;
                   <div className="h-full flex flex-col items-center justify-center text-slate-500 space-y-4">
                     <img src="/WolfMidLogo.png" className="w-24 h-24 object-contain" alt="WolfMind Logo" />
                     <div className="text-center space-y-1 max-w-sm">
-                      <h2 className="text-lg font-bold text-white tracking-wide gradient-text-premium">Sistemi Pronti alla Conversazione</h2>
+                      <h2 className="text-lg font-bold text-slate-800 tracking-wide gradient-text-premium">Sistemi Pronti alla Conversazione</h2>
                       <p className="text-xs text-slate-500 leading-relaxed">
                         Parla o digita per avviare la sessione. Gli agenti di ottimizzazione e verifica sono attivi in modalità <strong className="text-glowCyan uppercase">{settings.active_mode}</strong>.
                       </p>
@@ -661,8 +661,8 @@ Usa l'italiano e sii conciso ed efficace.`;
                       <div
                         className={`rounded-2xl px-5 py-3.5 border text-sm leading-relaxed ${
                           msg.role === 'user'
-                            ? 'bg-gradient-to-br from-indigo-950/60 to-purple-950/40 border-indigo-500/20 text-white shadow-xl'
-                            : 'bg-white/[0.03] border-white/5 backdrop-blur-md text-slate-250 shadow-xl'
+                            ? 'bg-gradient-to-br from-glowCyan to-glowBlue border-glowBlue/10 text-white shadow-md'
+                            : 'bg-white border-slate-200/80 text-slate-800 shadow-md'
                         }`}
                       >
                         {msg.isGenerating ? (
@@ -706,7 +706,7 @@ Usa l'italiano e sii conciso ed efficace.`;
                           
                           {/* Note text inside premium card */}
                           {msg.verification.note && (
-                            <div className="text-xxs text-slate-400 border border-white/[0.04] rounded-xl bg-black/25 p-3.5 leading-relaxed font-sans max-w-lg select-text shadow-inner">
+                            <div className="text-xxs text-slate-650 border border-sky-100/40 rounded-xl bg-sky-50/50 p-3.5 leading-relaxed font-sans max-w-lg select-text shadow-inner">
                               <div className="font-bold text-slate-500 uppercase tracking-wider mb-1 flex items-center gap-1">
                                 <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -751,14 +751,14 @@ Usa l'italiano e sii conciso ed efficace.`;
               </div>
 
               {/* Chat Input form */}
-              <form onSubmit={handleSendMessage} className="p-5 bg-darkSecondary/30 border-t border-white/[0.03] flex items-center gap-3.5 backdrop-blur-md">
+              <form onSubmit={handleSendMessage} className="p-5 bg-darkSecondary/50 border-t border-sky-100/40 flex items-center gap-3.5 backdrop-blur-md">
                 <button
                   type="button"
                   onClick={toggleListening}
                   className={`p-3.5 rounded-2xl border transition-all duration-350 shadow-md ${
                     isListening
-                      ? 'bg-red-950/40 text-red-400 border-red-500/60 animate-pulse shadow-red-900/20'
-                      : 'bg-black/35 text-glowCyan border-white/5 hover:border-glowCyan/50 hover:bg-glowCyan/5'
+                      ? 'bg-red-50 text-red-500 border-red-300 animate-pulse shadow-red-100'
+                      : 'bg-white text-glowCyan border-slate-200 hover:border-glowCyan/50 hover:bg-glowCyan/5'
                   }`}
                   title={isListening ? "Ferma ascolto" : "Parla"}
                 >
@@ -779,7 +779,7 @@ Usa l'italiano e sii conciso ed efficace.`;
                 <button
                   type="submit"
                   disabled={!inputText.trim()}
-                  className="p-3.5 bg-glowCyan/10 text-glowCyan border border-glowCyan/25 hover:border-glowCyan disabled:border-white/5 disabled:text-slate-700 rounded-2xl transition-all duration-300 font-semibold shadow-md glow-shadow-cyan-hover"
+                  className="p-3.5 bg-glowCyan text-white border border-glowCyan hover:bg-glowCyan/90 disabled:bg-slate-100 disabled:border-slate-200 disabled:text-slate-400 rounded-2xl transition-all duration-300 font-semibold shadow-md glow-shadow-cyan-hover"
                   title="Invia"
                 >
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -800,10 +800,10 @@ Usa l'italiano e sii conciso ed efficace.`;
           )}
 
           {activeTab === 'sessioni' && (
-            <div className="flex h-full w-full gap-5 p-6 text-slate-200">
+            <div className="flex h-full w-full gap-5 p-6 text-slate-700">
               {/* Sessions List */}
-              <div className="flex w-80 flex-col rounded-2xl glass p-4 border border-white/[0.03] shadow-2xl">
-                <h3 className="text-sm font-semibold tracking-wide uppercase text-white glow-cyan flex items-center gap-2 mb-4">
+              <div className="flex w-80 flex-col rounded-2xl glass p-4 border border-sky-100/40 shadow-xl">
+                <h3 className="text-sm font-semibold tracking-wide uppercase text-slate-800 glow-cyan flex items-center gap-2 mb-4">
                   <svg className="w-4 h-4 text-glowCyan" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
@@ -824,8 +824,8 @@ Usa l'italiano e sii conciso ed efficace.`;
                           }}
                           className={`p-3 rounded-xl cursor-pointer transition-all duration-300 border ${
                             isSelected
-                              ? 'bg-gradient-to-r from-glowCyan/15 to-indigo-500/10 border-glowCyan/50 text-white shadow-[0_0_15px_rgba(102,252,241,0.1)] border-l-[3px]'
-                              : 'bg-white/[0.02] border-white/[0.02] hover:bg-white/[0.05] hover:border-white/[0.06] hover:text-white'
+                              ? 'bg-gradient-to-r from-glowCyan/15 to-glowBlue/5 border-glowCyan text-glowCyan shadow-sm border-l-[3px]'
+                              : 'bg-white border-slate-200 hover:bg-slate-50 hover:border-slate-300 hover:text-slate-900'
                           }`}
                         >
                           <span className="text-xs truncate font-medium block">{name}</span>
@@ -837,13 +837,13 @@ Usa l'italiano e sii conciso ed efficace.`;
               </div>
 
               {/* View Panel */}
-              <div className="flex-1 flex flex-col rounded-2xl glass border border-white/[0.03] p-5 shadow-2xl">
+              <div className="flex-1 flex flex-col rounded-2xl glass border border-sky-100/40 p-5 shadow-xl">
                 {selectedSessionName ? (
                   <div className="flex-1 flex flex-col h-full">
                     <div className="flex justify-between items-center mb-4">
-                      <span className="text-sm font-semibold tracking-wide text-white">{selectedSessionName}</span>
+                      <span className="text-sm font-semibold tracking-wide text-slate-800">{selectedSessionName}</span>
                     </div>
-                    <div className="flex-1 w-full bg-black/35 text-slate-300 font-mono text-xs p-5 rounded-xl border border-white/[0.04] overflow-y-auto whitespace-pre-wrap leading-relaxed select-text">
+                    <div className="flex-1 w-full bg-white text-slate-700 font-mono text-xs p-5 rounded-xl border border-slate-200 overflow-y-auto whitespace-pre-wrap leading-relaxed select-text shadow-inner">
                       {selectedSessionContent || 'Caricamento contenuto sessione...'}
                     </div>
                   </div>
