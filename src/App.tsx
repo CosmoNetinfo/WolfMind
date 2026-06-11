@@ -92,6 +92,7 @@ export default function App() {
   useEffect(() => {
     loadAppConfig();
     setupSpeechRecognition();
+    checkUpdates(false);
   }, []);
 
   // Scroll to bottom of chat when messages change
@@ -443,6 +444,35 @@ Usa l'italiano e sii conciso ed efficace.`;
     getCurrentWindow().close();
   };
 
+  const checkUpdates = async (manual = false) => {
+    try {
+      addLog("Verifica aggiornamenti in corso...");
+      const { check } = await import('@tauri-apps/plugin-updater');
+      const update = await check();
+      if (update) {
+        addLog(`Nuovo aggiornamento disponibile: v${update.version}`);
+        const confirmUpdate = window.confirm(
+          `Nuova versione disponibile: v${update.version}\n\nDesideri scaricare ed installare l'aggiornamento adesso?`
+        );
+        if (confirmUpdate) {
+          addLog("Download dell'aggiornamento avviato...");
+          await update.downloadAndInstall();
+          addLog("Aggiornamento installato con successo! Riavvio in corso...");
+        }
+      } else {
+        addLog("Nessun aggiornamento disponibile.");
+        if (manual) {
+          alert("Nessun aggiornamento disponibile. L'applicazione è aggiornata.");
+        }
+      }
+    } catch (e) {
+      addLog(`Errore durante il controllo degli aggiornamenti: ${e}`);
+      if (manual) {
+        alert(`Errore nel controllo degli aggiornamenti: ${e}`);
+      }
+    }
+  };
+
   const handleOpenLink = async () => {
     const { openUrl } = await import('@tauri-apps/plugin-opener');
     await openUrl('https://cosmonet.info');
@@ -657,6 +687,19 @@ Usa l'italiano e sii conciso ed efficace.`;
                 className="w-full accent-glowCyan cursor-pointer h-1 rounded-lg bg-white/10"
               />
             </div>
+          </div>
+
+          {/* Update Section */}
+          <div className="pt-3 border-t border-slate-200">
+            <button
+              onClick={() => checkUpdates(true)}
+              className="w-full py-2 bg-slate-100 border border-slate-200 hover:border-glowCyan/60 text-slate-700 hover:text-glowCyan rounded-xl text-xxs font-bold uppercase transition-all duration-300 shadow-sm flex items-center justify-center gap-1.5"
+            >
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 1121.21 7.89M9 11l3 3L21 5" />
+              </svg>
+              Controlla Aggiornamenti
+            </button>
           </div>
 
           {/* Log Window */}
