@@ -435,7 +435,7 @@ Usa l'italiano e sii conciso ed efficace.`;
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2">
             <div className="w-9 h-9 rounded-xl overflow-hidden border border-glowCyan/30 shadow-[0_0_15px_rgba(56,189,248,0.15)] flex items-center justify-center bg-black/40">
-              <img src="/logo.png?v=3" className="w-8 h-8 object-contain" alt="Logo" />
+              <img src="/WolfMidLogo.png" className="w-8 h-8 object-contain" alt="Logo" />
             </div>
             <span className="text-lg font-bold tracking-wider gradient-text-premium">
               WolfMind
@@ -643,7 +643,7 @@ Usa l'italiano e sii conciso ed efficace.`;
                 {messages.length === 0 ? (
                   <div className="h-full flex flex-col items-center justify-center text-slate-500 space-y-4">
                     <div className="w-24 h-24 rounded-3xl overflow-hidden border border-glowCyan/25 flex items-center justify-center bg-black/30 pulse-glow">
-                      <img src="/logo.png?v=3" className="w-20 h-20 object-contain" alt="WolfMind Logo" />
+                      <img src="/WolfMidLogo.png" className="w-20 h-20 object-contain" alt="WolfMind Logo" />
                     </div>
                     <div className="text-center space-y-1 max-w-sm">
                       <h2 className="text-lg font-bold text-white tracking-wide gradient-text-premium">Sistemi Pronti alla Conversazione</h2>
