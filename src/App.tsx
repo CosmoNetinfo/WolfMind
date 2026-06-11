@@ -428,7 +428,8 @@ Usa l'italiano e sii conciso ed efficace.`;
       <header className="flex items-center justify-between px-6 py-4 bg-darkSecondary/50 border-b border-gray-800 glass">
         <div className="flex items-center gap-3">
           <span className="text-xl font-bold tracking-wider text-white glow-text-cyan flex items-center gap-2">
-            🐺 WolfMind
+            <img src="/logo.png" className="w-8 h-8 rounded-lg border border-glowCyan/30 object-cover" alt="Logo" />
+            WolfMind
           </span>
           <div className="flex rounded-lg bg-darkBg p-0.5 border border-gray-800">
             {(['chat', 'articolo', 'brief'] as const).map(mode => (
@@ -634,8 +635,8 @@ Usa l'italiano e sii conciso ed efficace.`;
               <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
                 {messages.length === 0 ? (
                   <div className="h-full flex flex-col items-center justify-center text-gray-500 space-y-3">
-                    <div className="w-16 h-16 rounded-full bg-darkSecondary border border-gray-800 flex items-center justify-center glow-shadow-cyan">
-                      <span className="text-2xl">🐺</span>
+                    <div className="w-16 h-16 rounded-2xl bg-darkSecondary border border-gray-800 flex items-center justify-center glow-shadow-cyan overflow-hidden">
+                      <img src="/logo.png" className="w-full h-full object-cover" alt="WolfMind Logo" />
                     </div>
                     <div className="text-center">
                       <p className="text-sm font-semibold text-white">WolfMind Pronto ad Assisterti</p>
