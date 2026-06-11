@@ -28,3 +28,9 @@ dist-ssr
 /logs/
 /cervello/sessioni/
 
+# Tauri signing keys
+*.key
+*.key.pub
+/src-tauri/*.key
+/src-tauri/*.key.pub
+

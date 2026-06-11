@@ -169,5 +169,8 @@ WolfMind è progettato per essere scalabile ed espandibile nel tempo. Ecco le ev
    - Sostituzione della Web Speech API con modelli locali (Whisper.cpp per STT ad altissima precisione e Piper TTS per voci in italiano incredibilmente naturali e prive di latenza internet).
 5. **[IMPLEMENTATO] Git Sync Automatico delle Note**:
    - Committing e push automatici in background della cartella `/cervello/` su repository remoto ogni volta che modifichi o crei un file Markdown o salvi una sessione, assicurando backup e sincronizzazione immediata senza bloccare l'interfaccia.
+6. **[IMPLEMENTATO] Modulo Auto-Updater (Tauri v2)**:
+   - Controllo automatico degli aggiornamenti all'avvio dell'app e possibilità di controllo manuale con un clic dalle Impostazioni. Gestisce il download e l'installazione nativa con riavvio per garantire che l'app rimanga sempre aggiornata.
+
 
 
