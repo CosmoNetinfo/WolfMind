@@ -1,0 +1,53 @@
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+
+body {
+  margin: 0;
+  font-family: 'Outfit', sans-serif;
+  background-color: #0b0c10;
+  color: #c5c6c7;
+  overflow: hidden;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #0b0c10;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #1f2833;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #66fcf1;
+}
+
+/* Glassmorphism utility */
+.glass {
+  background: rgba(31, 40, 51, 0.65);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.glow-shadow-cyan {
+  box-shadow: 0 0 15px rgba(102, 252, 241, 0.2);
+}
+
+.glow-shadow-cyan-hover:hover {
+  box-shadow: 0 0 25px rgba(102, 252, 241, 0.4);
+}
+
+.glow-text-cyan {
+  text-shadow: 0 0 8px rgba(102, 252, 241, 0.6);
+}

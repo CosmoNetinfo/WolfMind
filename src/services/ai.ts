@@ -1,0 +1,185 @@
+export interface ChatMessage {
+  role: 'system' | 'user' | 'assistant';
+  content: string;
+}
+
+export interface VerificationResult {
+  status: 'ok' | 'warning' | 'error' | 'unavailable';
+  note: string;
+}
+
+/**
+ * Sends a message to the Groq API (Generator Agent)
+ */
+export async function sendMessageToGroq(
+  apiKey: string,
+  model: string,
+  systemPrompt: string,
+  conversationHistory: ChatMessage[]
+): Promise<string> {
+  if (!apiKey) {
+    throw new Error("API Key di Groq mancante. Inseriscila nella sidebar.");
+  }
+
+  const messages = [
+    { role: 'system', content: systemPrompt },
+    ...conversationHistory
+  ];
+
+  try {
+    const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`
+      },
+      body: JSON.stringify({
+        model: model || 'llama-3.3-70b-versatile',
+        messages,
+        temperature: 0.7,
+      })
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error?.message || `Errore HTTP Groq: ${response.status}`);
+    }
+
+    const data = await response.json();
+    return data.choices[0]?.message?.content || '';
+  } catch (error: any) {
+    console.error("Groq API error:", error);
+    throw new Error(error.message || "Impossibile connettersi a Groq. Controlla la connessione internet.");
+  }
+}
+
+/**
+ * Sends a verification request to OpenRouter API (Verifier Agent) with an 8-second timeout
+ */
+export async function verifyResponseWithOpenRouter(
+  apiKey: string,
+  model: string,
+  originalUserPrompt: string,
+  generatorResponse: string,
+  kbContext: string,
+  activeMode: string
+): Promise<VerificationResult> {
+  if (!apiKey) {
+    return {
+      status: 'unavailable',
+      note: 'Verifica non disponibile: API Key di OpenRouter mancante.'
+    };
+  }
+
+  const verifierSystemPrompt = `Sei l'Agente Verificatore di WolfMind. Il tuo compito è analizzare la risposta fornita da un modello AI (il Generatore) a fronte della richiesta dell'utente, del contesto della Knowledge Base locale e della modalità di lavoro attiva (${activeMode.toUpperCase()}).
+
+Devi rispondere ESCLUSIVAMENTE con un oggetto JSON valido. Non includere blocchi di codice markdown (tipo \`\`\`json), non aggiungere prefazioni o postfazioni. Restituisci SOLO l'oggetto JSON con questa struttura:
+{
+  "status": "OK" | "WARNING" | "ERROR",
+  "note": "Una spiegazione sintetica in italiano dei riscontri. Sii molto critico ed esigente."
+}
+
+Regole di valutazione:
+- OK: La risposta del generatore è corretta, accurata, completa e coerente con la Knowledge Base.
+- WARNING: La risposta è discreta ma presenta lievi inesattezze, omette dettagli rilevanti o non rispetta a pieno le linee guida Yoast (se articolo).
+- ERROR: La risposta contiene errori gravi, contraddice i dati del cervello, manca di parti tecniche fondamentali, o fallisce la struttura (es. non è in HTML Formato C se articolo, o manca il blocco SEO).`;
+
+  const userPrompt = `MODALITÀ DI LAVORO ATTIVA: ${activeMode.toUpperCase()}
+
+RICHIESTA DELL'UTENTE:
+"""
+${originalUserPrompt}
+"""
+
+CONTESTO KNOWLEDGE BASE (CERVELLO):
+"""
+${kbContext}
+"""
+
+RISPOSTA GENERATA DA ANALIZZARE:
+"""
+${generatorResponse}
+"""
+
+Fornisci la tua verifica strutturata esclusivamente in JSON come richiesto.`;
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 8000); // 8s timeout
+
+  try {
+    const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`,
+        'HTTP-Referer': 'https://github.com/tauri-apps/tauri',
+        'X-Title': 'WolfMind Desktop Agent'
+      },
+      body: JSON.stringify({
+        model: model || 'qwen/qwen-2.5-72b-instruct:free',
+        messages: [
+          { role: 'system', content: verifierSystemPrompt },
+          { role: 'user', content: userPrompt }
+        ],
+        response_format: { type: "json_object" }
+      }),
+      signal: controller.signal
+    });
+
+    clearTimeout(timeoutId);
+
+    if (!response.ok) {
+      return {
+        status: 'unavailable',
+        note: `Verifica non disponibile: errore API OpenRouter (Status ${response.status})`
+      };
+    }
+
+    const data = await response.json();
+    const rawContent = data.choices[0]?.message?.content?.trim() || '';
+
+    try {
+      // Try parsing the response as JSON
+      const parsed = JSON.parse(rawContent);
+      const status = (parsed.status || 'OK').toUpperCase();
+      const note = parsed.note || 'Verifica completata con successo.';
+
+      let statusEnum: 'ok' | 'warning' | 'error' = 'ok';
+      if (status === 'WARNING') statusEnum = 'warning';
+      if (status === 'ERROR') statusEnum = 'error';
+
+      return {
+        status: statusEnum,
+        note
+      };
+    } catch (parseError) {
+      console.warn("Could not parse verifier JSON directly, trying regex extract:", rawContent);
+      // Fallback regex attempt in case the model outputted markdown or extra text
+      const jsonMatch = rawContent.match(/\{[\s\S]*?\}/);
+      if (jsonMatch) {
+        try {
+          const parsed = JSON.parse(jsonMatch[0]);
+          const status = (parsed.status || 'OK').toUpperCase();
+          const note = parsed.note || 'Verifica completata.';
+          let statusEnum: 'ok' | 'warning' | 'error' = 'ok';
+          if (status === 'WARNING') statusEnum = 'warning';
+          if (status === 'ERROR') statusEnum = 'error';
+          return { status: statusEnum, note };
+        } catch (_) {}
+      }
+      return {
+        status: 'ok', // fallback to ok to not block user, but show parsing note
+        note: `Verifica completata (risposta non strutturata): ${rawContent}`
+      };
+    }
+  } catch (error: any) {
+    clearTimeout(timeoutId);
+    console.error("OpenRouter Verifier error or timeout:", error);
+    return {
+      status: 'unavailable',
+      note: error.name === 'AbortError' 
+        ? 'Verifica non disponibile: il verificatore ha impiegato più di 8 secondi (Timeout).' 
+        : 'Verifica non disponibile: errore di connessione con il verificatore.'
+    };
+  }
+}
