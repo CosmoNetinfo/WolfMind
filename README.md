@@ -165,6 +165,7 @@ WolfMind è progettato per essere scalabile ed espandibile nel tempo. Ecco le ev
    - Integrazione di motori locali leggeri come Porcupine o Rust-pocketspinx per consentire all'app di attivarsi pronunciando una parola chiave (es. *"Ehi Wolf"* o *"WolfMind"*), avviando la conversazione a mani libere.
 4. **Speech-to-Text e Text-to-Speech Offline**:
    - Sostituzione della Web Speech API con modelli locali (Whisper.cpp per STT ad altissima precisione e Piper TTS per voci in italiano incredibilmente naturali e prive di latenza internet).
-5. **Git Sync Automatico delle Note**:
-   - Committing e push automatici in background della cartella `/cervello/` su un repository privato ogni volta che modifichi o crei un file Markdown, assicurando backup e sincronizzazione multi-dispositivo.
+5. **[IMPLEMENTATO] Git Sync Automatico delle Note**:
+   - Committing e push automatici in background della cartella `/cervello/` su repository remoto ogni volta che modifichi o crei un file Markdown o salvi una sessione, assicurando backup e sincronizzazione immediata senza bloccare l'interfaccia.
+
 

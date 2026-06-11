@@ -182,6 +182,37 @@ fn ensure_dirs_and_defaults() -> Result<(), String> {
     Ok(())
 }
 
+fn auto_git_commit_and_push(file_name: &str) {
+    let base = get_base_dir();
+    let cervello_dir = base.join("cervello");
+    let repo_dir = if cervello_dir.join(".git").exists() {
+        cervello_dir
+    } else if base.join(".git").exists() {
+        base
+    } else {
+        return;
+    };
+
+    let file_name_clone = file_name.to_string();
+    std::thread::spawn(move || {
+        let _ = std::process::Command::new("git")
+            .args(&["add", "-A"])
+            .current_dir(&repo_dir)
+            .output();
+
+        let commit_msg = format!("WolfMind Auto-Sync: {}", file_name_clone);
+        let _ = std::process::Command::new("git")
+            .args(&["commit", "-m", &commit_msg])
+            .current_dir(&repo_dir)
+            .output();
+
+        let _ = std::process::Command::new("git")
+            .args(&["push", "origin", "main"])
+            .current_dir(&repo_dir)
+            .output();
+    });
+}
+
 #[tauri::command]
 fn get_settings() -> Result<String, String> {
     ensure_dirs_and_defaults()?;
@@ -245,7 +276,9 @@ fn get_kb_files() -> Result<HashMap<String, String>, String> {
 fn save_kb_file(name: String, content: String) -> Result<(), String> {
     ensure_dirs_and_defaults()?;
     let file_path = get_base_dir().join("cervello").join(&name);
-    fs::write(file_path, content).map_err(|e| e.to_string())
+    fs::write(file_path, content).map_err(|e| e.to_string())?;
+    auto_git_commit_and_push(&name);
+    Ok(())
 }
 
 #[tauri::command]
@@ -255,6 +288,7 @@ fn delete_kb_file(name: String) -> Result<(), String> {
     if file_path.exists() {
         fs::remove_file(file_path).map_err(|e| e.to_string())?;
     }
+    auto_git_commit_and_push(&format!("eliminato {}", name));
     Ok(())
 }
 
@@ -262,7 +296,9 @@ fn delete_kb_file(name: String) -> Result<(), String> {
 fn save_session(name: String, content: String) -> Result<(), String> {
     ensure_dirs_and_defaults()?;
     let session_path = get_base_dir().join("cervello").join("sessioni").join(format!("{}.md", name));
-    fs::write(session_path, content).map_err(|e| e.to_string())
+    fs::write(session_path, content).map_err(|e| e.to_string())?;
+    auto_git_commit_and_push(&format!("sessione {}", name));
+    Ok(())
 }
 
 #[tauri::command]
