@@ -5,9 +5,10 @@ interface CervelloTabProps {
   onRefreshKB: () => void;
   kbFiles: Record<string, string>;
   onLog: (msg: string) => void;
+  onShowToast: (message: string, type?: 'success' | 'error' | 'info') => void;
 }
 
-export default function CervelloTab({ onRefreshKB, kbFiles, onLog }: CervelloTabProps) {
+export default function CervelloTab({ onRefreshKB, kbFiles, onLog, onShowToast }: CervelloTabProps) {
   const [selectedFile, setSelectedFile] = useState<string | null>(null);
   const [editorContent, setEditorContent] = useState<string>('');
   const [newFileName, setNewFileName] = useState<string>('');
@@ -31,10 +32,10 @@ export default function CervelloTab({ onRefreshKB, kbFiles, onLog }: CervelloTab
       await invoke('save_kb_file', { name: selectedFile, content: editorContent });
       onLog(`File salvato: ${selectedFile}`);
       onRefreshKB();
-      alert(`File '${selectedFile}' salvato con successo!`);
+      onShowToast(`File '${selectedFile}' salvato con successo!`);
     } catch (e: any) {
       onLog(`Errore nel salvataggio del file: ${e}`);
-      alert(`Errore: ${e}`);
+      onShowToast(`Errore: ${e}`, 'error');
     }
   };
 
@@ -54,7 +55,7 @@ export default function CervelloTab({ onRefreshKB, kbFiles, onLog }: CervelloTab
       setSelectedFile(name);
     } catch (e: any) {
       onLog(`Errore nella creazione del file: ${e}`);
-      alert(`Errore: ${e}`);
+      onShowToast(`Errore: ${e}`, 'error');
     }
   };
 
@@ -72,7 +73,7 @@ export default function CervelloTab({ onRefreshKB, kbFiles, onLog }: CervelloTab
       onRefreshKB();
     } catch (e: any) {
       onLog(`Errore nell'eliminazione del file: ${e}`);
-      alert(`Errore: ${e}`);
+      onShowToast(`Errore: ${e}`, 'error');
     }
   };
 

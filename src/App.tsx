@@ -56,6 +56,18 @@ export default function App() {
   const [isListening, setIsListening] = useState(false);
   const [logs, setLogs] = useState<string[]>([]);
   const [showSettingsPanel, setShowSettingsPanel] = useState(false);
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
+
+  const showToast = (message: string, type: 'success' | 'error' | 'info' = 'success') => {
+    setToast({ message, type });
+  };
+
+  useEffect(() => {
+    if (toast) {
+      const timer = setTimeout(() => setToast(null), 3500);
+      return () => clearTimeout(timer);
+    }
+  }, [toast]);
 
   // Files & Context data
   const [kbFiles, setKbFiles] = useState<Record<string, string>>({});
@@ -165,7 +177,7 @@ export default function App() {
 
   const toggleListening = () => {
     if (!recognitionRef.current) {
-      alert("Riconoscimento vocale non supportato.");
+      showToast("Riconoscimento vocale non supportato.", 'error');
       return;
     }
 
@@ -373,10 +385,10 @@ Usa l'italiano e sii conciso ed efficace.`;
 
       setMessages([]);
       setStatusText('Pronto');
-      alert(`Sessione salvata come '${filename}.md'`);
+      showToast(`Sessione salvata come '${filename}.md'`);
     } catch (e: any) {
       addLog(`Errore nel salvataggio della sessione: ${e}`);
-      alert(`Errore nel salvataggio: ${e}`);
+      showToast(`Errore nel salvataggio: ${e}`, 'error');
       setStatusText('Errore');
     }
   };
@@ -386,9 +398,9 @@ Usa l'italiano e sii conciso ed efficace.`;
       try {
         await navigator.clipboard.writeText(msg.content);
         addLog("HTML dell'articolo copiato.");
-        alert("HTML copiato nella clipboard!");
+        showToast("HTML copiato nella clipboard!");
       } catch (err) {
-        alert("Impossibile copiare: " + err);
+        showToast("Impossibile copiare: " + err, 'error');
       }
     } else if (settings.active_mode === 'brief') {
       const projectName = prompt("Inserisci il nome del progetto per salvare il brief (es: kashy-brief):", "progetto-brief");
@@ -398,9 +410,9 @@ Usa l'italiano e sii conciso ed efficace.`;
         addLog(`Brief salvato come: ${projectName}.md`);
         const sess = await invoke<string[]>('get_sessions');
         setSessions(sess);
-        alert(`Brief '${projectName}.md' salvato.`);
+        showToast(`Brief '${projectName}.md' salvato.`);
       } catch (e: any) {
-        alert("Errore nel salvataggio: " + e);
+        showToast("Errore nel salvataggio: " + e, 'error');
       }
     }
   };
@@ -422,10 +434,10 @@ Usa l'italiano e sii conciso ed efficace.`;
       <header className="flex items-center justify-between px-6 py-4 bg-darkSecondary/40 border-b border-white/[0.03] glass shadow-lg z-10">
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2">
-            <div className="w-9 h-9 rounded-xl overflow-hidden border border-glowCyan/30 shadow-[0_0_15px_rgba(102,252,241,0.15)] flex items-center justify-center bg-black/40">
-              <img src="/logo.png" className="w-7.5 h-7.5 object-contain" alt="Logo" />
+            <div className="w-9 h-9 rounded-xl overflow-hidden border border-glowCyan/30 shadow-[0_0_15px_rgba(56,189,248,0.15)] flex items-center justify-center bg-black/40">
+              <img src="/logo.png" className="w-8 h-8 object-contain" alt="Logo" />
             </div>
-            <span className="text-lg font-bold tracking-wider gradient-text-gold-cyan">
+            <span className="text-lg font-bold tracking-wider gradient-text-premium">
               WolfMind
             </span>
           </div>
@@ -473,7 +485,7 @@ Usa l'italiano e sii conciso ed efficace.`;
             }`}
             title="Impostazioni"
           >
-            <svg className="w-4.5 h-4.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
             </svg>
@@ -499,7 +511,7 @@ Usa l'italiano e sii conciso ed efficace.`;
                 value={settings.groq_api_key}
                 onChange={(e) => handleSaveSettings({ ...settings, groq_api_key: e.target.value })}
                 placeholder="gsk_..."
-                className="w-full premium-input text-xs px-3.5 py-2"
+                className="w-full premium-input text-xs px-4 py-2"
               />
             </div>
             <div>
@@ -509,7 +521,7 @@ Usa l'italiano e sii conciso ed efficace.`;
                 value={settings.openrouter_api_key}
                 onChange={(e) => handleSaveSettings({ ...settings, openrouter_api_key: e.target.value })}
                 placeholder="sk-or-..."
-                className="w-full premium-input text-xs px-3.5 py-2"
+                className="w-full premium-input text-xs px-4 py-2"
               />
             </div>
           </div>
@@ -521,7 +533,7 @@ Usa l'italiano e sii conciso ed efficace.`;
               <select
                 value={settings.groq_model}
                 onChange={(e) => handleSaveSettings({ ...settings, groq_model: e.target.value })}
-                className="w-full premium-input text-xs px-2.5 py-2"
+                className="w-full premium-input text-xs px-3 py-2"
               >
                 <option value="llama-3.3-70b-versatile">llama-3.3-70b-versatile</option>
                 <option value="gemma2-9b-it">gemma2-9b-it</option>
@@ -534,7 +546,7 @@ Usa l'italiano e sii conciso ed efficace.`;
               <select
                 value={settings.openrouter_model}
                 onChange={(e) => handleSaveSettings({ ...settings, openrouter_model: e.target.value })}
-                className="w-full premium-input text-xs px-2.5 py-2"
+                className="w-full premium-input text-xs px-3 py-2"
               >
                 <option value="qwen/qwen-2.5-72b-instruct:free">qwen/qwen-2.5-72b-instruct:free</option>
                 <option value="mistralai/mistral-7b-instruct:free">mistralai/mistral-7b-instruct:free</option>
@@ -546,7 +558,7 @@ Usa l'italiano e sii conciso ed efficace.`;
               <select
                 value={settings.openrouter_coder_model}
                 onChange={(e) => handleSaveSettings({ ...settings, openrouter_coder_model: e.target.value })}
-                className="w-full premium-input text-xs px-2.5 py-2"
+                className="w-full premium-input text-xs px-3 py-2"
               >
                 <option value="qwen/qwen-2.5-coder-32b-instruct:free">qwen/qwen-2.5-coder-32b-instruct:free</option>
                 <option value="meta-llama/llama-3.1-8b-instruct:free">meta-llama/llama-3.1-8b-instruct:free</option>
@@ -764,7 +776,7 @@ Usa l'italiano e sii conciso ed efficace.`;
                   value={inputText}
                   onChange={(e) => setInputText(e.target.value)}
                   placeholder={isListening ? "Riconoscimento vocale attivo..." : `Invia un messaggio in modalità ${settings.active_mode.toUpperCase()}...`}
-                  className="flex-1 premium-input px-4.5 py-3.5 text-sm"
+                  className="flex-1 premium-input px-5 py-4 text-sm"
                   disabled={isListening}
                 />
 
@@ -787,6 +799,7 @@ Usa l'italiano e sii conciso ed efficace.`;
               kbFiles={kbFiles}
               onRefreshKB={refreshKB}
               onLog={addLog}
+              onShowToast={showToast}
             />
           )}
 
@@ -861,6 +874,16 @@ Usa l'italiano e sii conciso ed efficace.`;
           <span>Modalità: <strong className="text-glowCyan uppercase font-semibold">{settings.active_mode}</strong></span>
         </div>
       </footer>
+
+      {/* Toast Notification */}
+      {toast && (
+        <div className={`fixed bottom-12 right-6 z-50 glass px-5 py-3.5 border-l-4 rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.5)] flex items-center gap-3 animate-toast ${
+          toast.type === 'error' ? 'border-red-500/80 bg-red-950/35' : 
+          toast.type === 'info' ? 'border-glowBlue/80 bg-glowBlue/10' : 'border-glowCyan/80 bg-glowCyan/5'
+        }`}>
+          <span className="text-xs font-bold tracking-wide text-white">{toast.message}</span>
+        </div>
+      )}
     </div>
   );
 }

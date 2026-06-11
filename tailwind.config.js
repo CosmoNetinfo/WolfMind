@@ -10,10 +10,10 @@ export default {
         sans: ['Outfit', 'sans-serif'],
       },
       colors: {
-        darkBg: '#0c0d10',
-        darkSecondary: '#16171e',
-        glowCyan: '#ffffff',
-        glowBlue: '#94a3b8',
+        darkBg: '#090a0f',
+        darkSecondary: '#12141c',
+        glowCyan: '#38bdf8',
+        glowBlue: '#f97316',
         textMuted: '#64748b',
       }
     },
