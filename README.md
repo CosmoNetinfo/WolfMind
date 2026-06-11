@@ -99,3 +99,72 @@ npm run tauri build
 4. Scegli i modelli preferiti per ciascun agente.
 5. Abilita o disabilita le opzioni vocali (TTS) e gli agenti aggiuntivi (Programmatore e Verificatore).
 6. Le chiavi e le preferenze verranno salvate in modo sicuro e persistente all'interno del file `/config/settings.json`.
+
+---
+
+## 🔑 Come Ottenere Chiavi API Gratuite
+
+Per utilizzare WolfMind senza costi operativi, puoi avvalerti dei piani gratuiti dei due provider integrati:
+
+### 1. Groq Cloud (Generazione a Bassa Latenza)
+Groq offre un piano gratuito estremamente generoso con limiti di rate limiting molto alti per scopi di sviluppo e personali.
+* **Come ottenerla**:
+  1. Registrati o accedi alla [Groq Console](https://console.groq.com/).
+  2. Vai nella sezione **API Keys** nel menu di sinistra.
+  3. Fai clic su **Create API Key**, assegna un nome (es. `WolfMind-Local`) e copia la chiave generata (inizia con `gsk_`).
+  4. Inseriscila nella sidebar di WolfMind.
+
+### 2. OpenRouter (Modelli Coder e Verificatore Gratuiti)
+OpenRouter aggrega centinaia di modelli e offre l'accesso a potenti modelli open source in modalità totalmente gratuita (contrassegnati dal suffisso `:free`).
+* **Come ottenerla**:
+  1. Accedi o registrati su [OpenRouter.ai](https://openrouter.ai/).
+  2. Vai su **Keys** all'interno delle impostazioni del tuo account o nella dashboard principale.
+  3. Fai clic su **Create Key**, nominala e copia il codice (inizia con `sk-or-`).
+  4. Incolla la chiave nella sidebar di WolfMind.
+* **Modelli Consigliati Gratuiti**:
+  - Per l'Agente Programmatore: `qwen/qwen-2.5-coder-32b-instruct:free`
+  - Per l'Agente Verificatore: `qwen/qwen-2.5-72b-instruct:free` o `deepseek/deepseek-r1:free`
+
+---
+
+## 📖 Guida all'Uso dell'Applicazione
+
+WolfMind è strutturato per essere guidato sia via testo sia via voce. Ecco le funzionalità principali per ciascuna sezione dell'app:
+
+### 💬 Tab Chat (Lavoro con gli Agenti)
+La schermata principale dove interagisci con la pipeline intelligente dei tre agenti:
+* **Attivazione Vocale**: Fai clic sul pulsante **Microfono** in basso a sinistra. Lo Speech-to-Text si attiverà. WolfMind ascolterà le tue parole e le digiterà per te nel campo di testo.
+* **Esecuzione in Pipeline**:
+  - Quando invii una richiesta, l'**Agente Generatore** (Groq) formula la prima stesura integrando la tua base di conoscenza locale.
+  - Se è abilitato il **Programmatore** e nella risposta è presente del codice, l'Agente Coder (OpenRouter) interviene in background per ottimizzare, correggere bug ed eliminare errori di sintassi.
+  - Successivamente, l'**Agente Verificatore** analizza la risposta finale per garantire la coerenza con le tue regole o i concetti Yoast.
+* **Sintesi Vocale**: Se abilitata, l'applicazione leggerà la risposta finale con una voce fluida, rimuovendo automaticamente tag HTML o blocchi di codice per non disturbare l'ascolto.
+* **Salvataggio Sessione**: Cliccando su **Salva Sessione** in alto a destra, l'intera conversazione viene archiviata come file Markdown `.md` organizzato in `/cervello/sessioni/` con un riepilogo cronologico.
+
+### 🧠 Tab Cervello (Knowledge Base Locale)
+Gestione diretta della tua conoscenza offline:
+* **Elenco File**: A sinistra vedi tutti i file `.md` della tua cartella `/cervello/`.
+* **Editor Integrato**: Cliccando su un file, puoi modificarlo direttamente all'interno dell'editor di testo Markdown integrato a destra. Fai clic su **Salva Modifiche** per salvarlo istantaneamente nel file system.
+* **Nuovo File**: Cliccando sul pulsante **`+`** a destra di "Cervello Locale", puoi inserire il nome di un nuovo documento per crearlo all'istante.
+
+### 📁 Tab Sessioni (Storico Conversazioni)
+* Consente di sfogliare tutte le vecchie sessioni salvate.
+* Clicca su un file per visualizzare il log completo della conversazione precedente formattato in formato testuale all'interno del visualizzatore a destra.
+
+---
+
+## 🔮 Integrazioni Future Possibili
+
+WolfMind è progettato per essere scalabile ed espandibile nel tempo. Ecco le evoluzioni pianificate o possibili per le future versioni:
+
+1. **Integrazione LLM 100% Locali (Ollama)**:
+   - Configurazione di endpoint locali (es. `http://localhost:11434`) per consentire a WolfMind di far girare modelli come Llama 3 o Qwen Coder in modalità totalmente offline direttamente sulla GPU del tuo computer.
+2. **Vector DB e RAG Avanzato (Memory Agent)**:
+   - Implementazione di un database vettoriale embedded (come SQLite-VSS o LanceDB) per indicizzare la Knowledge Base locale. Questo permetterà all'AI di eseguire ricerche semantiche intelligenti invece di leggere la cartella in modo piatto.
+3. **Attivazione Vocale Continua ("Wake Word")**:
+   - Integrazione di motori locali leggeri come Porcupine o Rust-pocketspinx per consentire all'app di attivarsi pronunciando una parola chiave (es. *"Ehi Wolf"* o *"WolfMind"*), avviando la conversazione a mani libere.
+4. **Speech-to-Text e Text-to-Speech Offline**:
+   - Sostituzione della Web Speech API con modelli locali (Whisper.cpp per STT ad altissima precisione e Piper TTS per voci in italiano incredibilmente naturali e prive di latenza internet).
+5. **Git Sync Automatico delle Note**:
+   - Committing e push automatici in background della cartella `/cervello/` su un repository privato ogni volta che modifichi o crei un file Markdown, assicurando backup e sincronizzazione multi-dispositivo.
+
