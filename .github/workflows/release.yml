@@ -51,6 +51,15 @@ jobs:
       - name: Install frontend dependencies
         run: npm ci
 
+      - name: Read README.md
+        id: readme
+        shell: bash
+        run: |
+          echo "body<<EOF" >> $GITHUB_OUTPUT
+          cat README.md >> $GITHUB_OUTPUT
+          echo "" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
       - name: Build Tauri app and create release
         uses: tauri-apps/tauri-action@v0
         env:
@@ -58,7 +67,7 @@ jobs:
         with:
           tagName: app-v__VERSION__
           releaseName: "WolfMind v__VERSION__"
-          releaseBody: "Rilascio ufficiale di WolfMind v__VERSION__. Consulta i dettagli degli aggiornamenti nel commit log."
+          releaseBody: ${{ steps.readme.outputs.body }}
           releaseDraft: true
           prerelease: false
           args: ${{ matrix.args }}
