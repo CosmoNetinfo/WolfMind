@@ -434,9 +434,7 @@ Usa l'italiano e sii conciso ed efficace.`;
       <header className="flex items-center justify-between px-6 py-4 bg-darkSecondary/40 border-b border-white/[0.03] glass shadow-lg z-10">
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2">
-            <div className="w-9 h-9 rounded-xl overflow-hidden border border-glowCyan/30 shadow-[0_0_15px_rgba(56,189,248,0.15)] flex items-center justify-center bg-black/40">
-              <img src="/WolfMidLogo.png" className="w-8 h-8 object-contain" alt="Logo" />
-            </div>
+            <img src="/WolfMidLogo.png" className="w-9 h-9 object-contain" alt="Logo" />
             <span className="text-lg font-bold tracking-wider gradient-text-premium">
               WolfMind
             </span>
@@ -642,9 +640,7 @@ Usa l'italiano e sii conciso ed efficace.`;
               <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5">
                 {messages.length === 0 ? (
                   <div className="h-full flex flex-col items-center justify-center text-slate-500 space-y-4">
-                    <div className="w-24 h-24 rounded-3xl overflow-hidden border border-glowCyan/25 flex items-center justify-center bg-black/30 pulse-glow">
-                      <img src="/WolfMidLogo.png" className="w-20 h-20 object-contain" alt="WolfMind Logo" />
-                    </div>
+                    <img src="/WolfMidLogo.png" className="w-24 h-24 object-contain" alt="WolfMind Logo" />
                     <div className="text-center space-y-1 max-w-sm">
                       <h2 className="text-lg font-bold text-white tracking-wide gradient-text-premium">Sistemi Pronti alla Conversazione</h2>
                       <p className="text-xs text-slate-500 leading-relaxed">
