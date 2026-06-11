@@ -18,6 +18,11 @@ interface AppSettings {
   kb_max_tokens: number;
   auto_save_session: boolean;
   language: string;
+  ollama_enabled: boolean;
+  ollama_url: string;
+  ollama_model: string;
+  continuous_listening: boolean;
+  rag_enabled: boolean;
 }
 
 interface MessageUI {
@@ -45,7 +50,12 @@ export default function App() {
     active_mode: 'chat',
     kb_max_tokens: 8000,
     auto_save_session: true,
-    language: 'it'
+    language: 'it',
+    ollama_enabled: false,
+    ollama_url: 'http://localhost:11434',
+    ollama_model: 'llama3',
+    continuous_listening: false,
+    rag_enabled: true
   });
 
   // UI state
@@ -79,6 +89,12 @@ export default function App() {
   // Speech API refs
   const recognitionRef = useRef<any>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
+  const settingsRef = useRef(settings);
+  const isManuallyStoppedRef = useRef(false);
+
+  useEffect(() => {
+    settingsRef.current = settings;
+  }, [settings]);
 
   // Log message helper
   const addLog = async (msg: string) => {
@@ -144,30 +160,70 @@ export default function App() {
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (SpeechRecognition) {
       const rec = new SpeechRecognition();
-      rec.continuous = false;
+      rec.continuous = settingsRef.current.continuous_listening;
       rec.interimResults = false;
       rec.lang = 'it-IT';
 
       rec.onstart = () => {
         setIsListening(true);
-        setStatusText('Ascolto attivo...');
+        setStatusText(settingsRef.current.continuous_listening ? 'Wake Word attive ("Ehi Wolf")...' : 'Ascolto attivo...');
       };
 
       rec.onresult = (event: any) => {
-        const resultText = event.results[0][0].transcript;
-        setInputText(prev => prev ? prev + ' ' + resultText : resultText);
+        const resultIndex = event.resultIndex;
+        const resultText = event.results[resultIndex][0].transcript;
         addLog(`STT: "${resultText}"`);
+
+        if (settingsRef.current.continuous_listening) {
+          const lowerText = resultText.toLowerCase();
+          const triggerWords = ['ehi wolf', 'ehi, wolf', 'hey wolf', 'hey, wolf', 'wolfmind', 'wolf mind'];
+          let matchedTrigger = '';
+          for (const trigger of triggerWords) {
+            if (lowerText.includes(trigger)) {
+              matchedTrigger = trigger;
+              break;
+            }
+          }
+
+          if (matchedTrigger) {
+            const triggerIdx = lowerText.indexOf(matchedTrigger);
+            let commandText = resultText.substring(triggerIdx + matchedTrigger.length).trim();
+            commandText = commandText.replace(/^[,\.\s\?\!]+/, '');
+            
+            if (commandText) {
+              addLog(`Wake Word rilevata! Esecuzione comando: "${commandText}"`);
+              handleSendMessage(undefined, commandText);
+            } else {
+              addLog("Wake Word rilevata. In ascolto del comando...");
+              showToast("WolfMind ti ascolta...", 'info');
+            }
+          }
+        } else {
+          setInputText(prev => prev ? prev + ' ' + resultText : resultText);
+        }
       };
 
       rec.onerror = (event: any) => {
         addLog(`Errore STT: ${event.error}`);
-        setIsListening(false);
-        setStatusText('Pronto');
+        if (event.error !== 'no-speech' && !settingsRef.current.continuous_listening) {
+          setIsListening(false);
+          setStatusText('Pronto');
+        }
       };
 
       rec.onend = () => {
         setIsListening(false);
         setStatusText('Pronto');
+        
+        if (settingsRef.current.continuous_listening && !isManuallyStoppedRef.current) {
+          setTimeout(() => {
+            try {
+              recognitionRef.current?.start();
+            } catch (err) {
+              // Silently ignore if already active
+            }
+          }, 300);
+        }
       };
 
       recognitionRef.current = rec;
@@ -183,9 +239,18 @@ export default function App() {
     }
 
     if (isListening) {
+      isManuallyStoppedRef.current = true;
       recognitionRef.current.stop();
     } else {
-      recognitionRef.current.start();
+      isManuallyStoppedRef.current = false;
+      setupSpeechRecognition();
+      setTimeout(() => {
+        try {
+          recognitionRef.current.start();
+        } catch (e) {
+          addLog(`Errore avvio microfono: ${e}`);
+        }
+      }, 100);
     }
   };
 
@@ -232,12 +297,12 @@ export default function App() {
   };
 
   // Send message pipeline
-  const handleSendMessage = async (e?: React.FormEvent) => {
+  const handleSendMessage = async (e?: React.FormEvent, directQuery?: string) => {
     if (e) e.preventDefault();
-    if (!inputText.trim()) return;
+    const userQuery = directQuery ? directQuery.trim() : inputText.trim();
+    if (!userQuery) return;
 
-    const userQuery = inputText.trim();
-    setInputText('');
+    if (!directQuery) setInputText('');
     setStatusText('Generazione risposta...');
 
     const now = new Date().toLocaleTimeString();
@@ -251,7 +316,20 @@ export default function App() {
     setMessages(prev => [...prev, userMsg]);
 
     const activeProfilePrompt = profiles[settings.active_mode === 'brief' ? 'dev-brief' : settings.active_mode] || '';
-    const kbContext = compileKBContext();
+    
+    let kbContext = '';
+    if (settings.rag_enabled) {
+      try {
+        kbContext = await invoke<string>('query_kb_rag', { query: userQuery, maxResults: 3 });
+        addLog("RAG: Recuperato contesto pertinente dal cervello locale.");
+      } catch (e) {
+        addLog(`Errore RAG: ${e}. Uso del fallback piatto.`);
+        kbContext = compileKBContext();
+      }
+    } else {
+      kbContext = compileKBContext();
+    }
+
     const compiledSystemPrompt = `${activeProfilePrompt}\n\nCONTESTO KNOWLEDGE BASE DI RIFERIMENTO:\n${kbContext}`;
 
     const history: ChatMessage[] = messages.map(m => ({
@@ -271,12 +349,15 @@ export default function App() {
     setMessages(prev => [...prev, assistantMsgPlaceholder]);
 
     try {
-      // 1. Generator Agent (Groq)
+      // 1. Generator Agent (Groq / Ollama)
       let aiResponse = await sendMessageToGroq(
         settings.groq_api_key,
         settings.groq_model,
         compiledSystemPrompt,
-        history
+        history,
+        settings.ollama_enabled,
+        settings.ollama_url,
+        settings.ollama_model
       );
 
       // 1.5 Coder Agent (OpenRouter) - Refines code output if active & detected
@@ -606,6 +687,43 @@ Usa l'italiano e sii conciso ed efficace.`;
             </div>
           </div>
 
+          {/* Ollama local configuration */}
+          <div className="pt-2 border-t border-slate-200 space-y-4">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold text-slate-700">Usa Ollama (Local LLM)</span>
+              <input
+                type="checkbox"
+                checked={settings.ollama_enabled}
+                onChange={(e) => handleSaveSettings({ ...settings, ollama_enabled: e.target.checked })}
+                className="rounded border-slate-300 text-glowCyan focus:ring-glowCyan bg-white"
+              />
+            </div>
+            {settings.ollama_enabled && (
+              <>
+                <div>
+                  <label className="block text-xxs font-semibold uppercase text-slate-400 tracking-wider mb-1">Ollama URL</label>
+                  <input
+                    type="text"
+                    value={settings.ollama_url}
+                    onChange={(e) => handleSaveSettings({ ...settings, ollama_url: e.target.value })}
+                    placeholder="http://localhost:11434"
+                    className="w-full premium-input text-xs px-4 py-2"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xxs font-semibold uppercase text-slate-400 tracking-wider mb-1">Ollama Model</label>
+                  <input
+                    type="text"
+                    value={settings.ollama_model}
+                    onChange={(e) => handleSaveSettings({ ...settings, ollama_model: e.target.value })}
+                    placeholder="llama3"
+                    className="w-full premium-input text-xs px-4 py-2"
+                  />
+                </div>
+              </>
+            )}
+          </div>
+
           {/* AI Models configuration */}
           <div className="space-y-4 pt-2">
             <div>
@@ -672,6 +790,37 @@ Usa l'italiano e sii conciso ed efficace.`;
                 type="checkbox"
                 checked={settings.verifier_enabled}
                 onChange={(e) => handleSaveSettings({ ...settings, verifier_enabled: e.target.checked })}
+                className="rounded border-slate-300 text-glowCyan focus:ring-glowCyan bg-white"
+              />
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold text-slate-700">Ricerca Semantica (RAG)</span>
+              <input
+                type="checkbox"
+                checked={settings.rag_enabled}
+                onChange={(e) => handleSaveSettings({ ...settings, rag_enabled: e.target.checked })}
+                className="rounded border-slate-300 text-glowCyan focus:ring-glowCyan bg-white"
+              />
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold text-slate-700">Ascolto Continuo (Wake Word)</span>
+              <input
+                type="checkbox"
+                checked={settings.continuous_listening}
+                onChange={(e) => {
+                  const val = e.target.checked;
+                  handleSaveSettings({ ...settings, continuous_listening: val });
+                  setTimeout(() => {
+                    setupSpeechRecognition();
+                    if (val) {
+                      addLog("Wake Word abilitate. Avvio microfono...");
+                      recognitionRef.current?.start();
+                    } else {
+                      addLog("Wake Word disabilitate. Arresto microfono...");
+                      recognitionRef.current?.stop();
+                    }
+                  }, 150);
+                }}
                 className="rounded border-slate-300 text-glowCyan focus:ring-glowCyan bg-white"
               />
             </div>

@@ -15,16 +15,46 @@ export async function sendMessageToGroq(
   apiKey: string,
   model: string,
   systemPrompt: string,
-  conversationHistory: ChatMessage[]
+  conversationHistory: ChatMessage[],
+  ollamaEnabled?: boolean,
+  ollamaUrl?: string,
+  ollamaModel?: string
 ): Promise<string> {
-  if (!apiKey) {
-    throw new Error("API Key di Groq mancante. Inseriscila nella sidebar.");
-  }
-
   const messages = [
     { role: 'system', content: systemPrompt },
     ...conversationHistory
   ];
+
+  if (ollamaEnabled) {
+    const baseUrl = (ollamaUrl || 'http://localhost:11434').replace(/\/$/, '');
+    try {
+      const response = await fetch(`${baseUrl}/v1/chat/completions`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          model: ollamaModel || 'llama3',
+          messages,
+          temperature: 0.7,
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`Errore HTTP Ollama: ${response.status}`);
+      }
+
+      const data = await response.json();
+      return data.choices[0]?.message?.content || '';
+    } catch (error: any) {
+      console.error("Ollama API error:", error);
+      throw new Error(error.message || "Impossibile connettersi al server locale Ollama. Assicurati che sia avviato.");
+    }
+  }
+
+  if (!apiKey) {
+    throw new Error("API Key di Groq mancante. Inseriscila nella sidebar.");
+  }
 
   try {
     const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {

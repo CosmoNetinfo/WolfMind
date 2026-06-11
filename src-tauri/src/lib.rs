@@ -54,7 +54,12 @@ fn ensure_dirs_and_defaults() -> Result<(), String> {
   "active_mode": "chat",
   "kb_max_tokens": 8000,
   "auto_save_session": true,
-  "language": "it"
+  "language": "it",
+  "ollama_enabled": false,
+  "ollama_url": "http://localhost:11434",
+  "ollama_model": "llama3",
+  "continuous_listening": false,
+  "rag_enabled": true
 }"#;
         fs::write(&settings_path, default_settings).map_err(|e| e.to_string())?;
     }
@@ -293,6 +298,63 @@ fn delete_kb_file(name: String) -> Result<(), String> {
 }
 
 #[tauri::command]
+fn query_kb_rag(query: String, max_results: usize) -> Result<String, String> {
+    ensure_dirs_and_defaults()?;
+    let base = get_base_dir();
+    let cervello_dir = base.join("cervello");
+    let entries = fs::read_dir(cervello_dir).map_err(|e| e.to_string())?;
+
+    let query_terms: Vec<String> = query
+        .to_lowercase()
+        .split_whitespace()
+        .map(|s| s.chars().filter(|c| c.is_alphanumeric()).collect())
+        .filter(|s: &String| !s.is_empty())
+        .collect();
+
+    if query_terms.is_empty() {
+        return Ok(String::new());
+    }
+
+    let mut ranked_files = Vec::new();
+
+    for entry in entries {
+        let entry = entry.map_err(|e| e.to_string())?;
+        let path = entry.path();
+        if path.is_file() && path.extension().map(|s| s == "md").unwrap_or(false) {
+            let content = fs::read_to_string(&path).map_err(|e| e.to_string())?;
+            let content_lower = content.to_lowercase();
+            let filename = path.file_name().unwrap().to_string_lossy().into_owned();
+            let filename_lower = filename.to_lowercase();
+
+            let mut score = 0;
+            for term in &query_terms {
+                let count = content_lower.matches(term).count();
+                score += count;
+                if filename_lower.contains(term) {
+                    score += 15;
+                }
+            }
+
+            if score > 0 {
+                ranked_files.push((score, filename, content));
+            }
+        }
+    }
+
+    ranked_files.sort_by(|a, b| b.0.cmp(&a.0));
+
+    let mut context = String::new();
+    let limit = std::cmp::min(ranked_files.len(), max_results);
+
+    for i in 0..limit {
+        let (_, filename, content) = &ranked_files[i];
+        context.push_str(&format!("=== CONTESTO DA CERVELLO LOCALE: {} ===\n{}\n======================================\n\n", filename, content));
+    }
+
+    Ok(context)
+}
+
+#[tauri::command]
 fn save_session(name: String, content: String) -> Result<(), String> {
     ensure_dirs_and_defaults()?;
     let session_path = get_base_dir().join("cervello").join("sessioni").join(format!("{}.md", name));
@@ -359,7 +421,8 @@ pub fn run() {
             save_session,
             get_sessions,
             read_session,
-            write_app_log
+            write_app_log,
+            query_kb_rag
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

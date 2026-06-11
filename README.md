@@ -159,18 +159,19 @@ Gestione diretta della tua conoscenza offline:
 
 WolfMind è progettato per essere scalabile ed espandibile nel tempo. Ecco le evoluzioni pianificate o possibili per le future versioni:
 
-1. **Integrazione LLM 100% Locali (Ollama)**:
-   - Configurazione di endpoint locali (es. `http://localhost:11434`) per consentire a WolfMind di far girare modelli come Llama 3 o Qwen Coder in modalità totalmente offline direttamente sulla GPU del tuo computer.
-2. **Vector DB e RAG Avanzato (Memory Agent)**:
-   - Implementazione di un database vettoriale embedded (come SQLite-VSS o LanceDB) per indicizzare la Knowledge Base locale. Questo permetterà all'AI di eseguire ricerche semantiche intelligenti invece di leggere la cartella in modo piatto.
-3. **Attivazione Vocale Continua ("Wake Word")**:
-   - Integrazione di motori locali leggeri come Porcupine o Rust-pocketspinx per consentire all'app di attivarsi pronunciando una parola chiave (es. *"Ehi Wolf"* o *"WolfMind"*), avviando la conversazione a mani libere.
+1. **[IMPLEMENTATO] Integrazione LLM 100% Locali (Ollama)**:
+   - Supporto completo ad endpoint locali (es. `http://localhost:11434`) per far girare modelli come Llama 3 o Qwen in modalità totalmente offline. Configurabile comodamente dal pannello Impostazioni.
+2. **[IMPLEMENTATO] Ricerca Semantica RAG Locale**:
+   - Motore di ricerca TF-IDF nativo sviluppato in Rust che scansiona e indicizza le note Markdown locali, estraendo i 3 file più pertinenti alla richiesta dell'utente per passarli come contesto immediato all'IA (RAG).
+3. **[IMPLEMENTATO] Attivazione Vocale Continua ("Wake Word")**:
+   - Modalità di ascolto continuo nativo con rilevazione della frase di attivazione (es. *"Ehi Wolf"* o *"WolfMind"*). Esegue automaticamente i comandi vocali pronunciati dopo la wake word.
 4. **Speech-to-Text e Text-to-Speech Offline**:
-   - Sostituzione della Web Speech API con modelli locali (Whisper.cpp per STT ad altissima precisione e Piper TTS per voci in italiano incredibilmente naturali e prive di latenza internet).
+   - Sostituzione della Web Speech API del browser con modelli locali autonomi (es. Whisper.cpp per la trascrizione e Piper TTS per la sintesi vocale sintetica in italiano offline).
 5. **[IMPLEMENTATO] Git Sync Automatico delle Note**:
-   - Committing e push automatici in background della cartella `/cervello/` su repository remoto ogni volta che modifichi o crei un file Markdown o salvi una sessione, assicurando backup e sincronizzazione immediata senza bloccare l'interfaccia.
+   - Committing e push automatici in background della cartella `/cervello/` su repository remoto ad ogni modifica o sessione salvata.
 6. **[IMPLEMENTATO] Modulo Auto-Updater (Tauri v2)**:
-   - Controllo automatico degli aggiornamenti all'avvio dell'app e possibilità di controllo manuale con un clic dalle Impostazioni. Gestisce il download e l'installazione nativa con riavvio per garantire che l'app rimanga sempre aggiornata.
+   - Controllo degli aggiornamenti all'avvio o manuale con firma digitale di sicurezza e installazione nativa guidata.
+
 
 
 
