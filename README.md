@@ -1,7 +1,17 @@
 # 🐺 WolfMind
 
+<p align="center">
+  <img src="public/WolfMidLogo.png" width="150" alt="WolfMind Logo" />
+</p>
+
 > Assistente AI desktop personale per **DanyWolf** (Daniele Spalletti)  
 > *Sviluppato con Tauri v2, React 18, TypeScript e Tailwind CSS.*
+
+## 📸 Screenshot
+
+<p align="center">
+  <img src="public/screenshot.png" width="700" alt="WolfMind Interface" />
+</p>
 
 WolfMind è un'applicazione desktop **AI vocale multi-agente** con base di conoscenza (Knowledge Base) in Markdown gestita localmente. Nasce per sostituire e ottimizzare il workflow quotidiano di scrittura articoli per **CosmoNet.info**, stesura brief tecnici per **Antigravity** e brainstorming tecnologico offline/locale (ad eccezione delle chiamate API).
 
