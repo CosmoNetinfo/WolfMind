@@ -428,10 +428,30 @@ Usa l'italiano e sii conciso ed efficace.`;
     }
   };
 
+  const handleMinimize = async () => {
+    const { getCurrentWindow } = await import('@tauri-apps/api/window');
+    getCurrentWindow().minimize();
+  };
+
+  const handleToggleMaximize = async () => {
+    const { getCurrentWindow } = await import('@tauri-apps/api/window');
+    getCurrentWindow().toggleMaximize();
+  };
+
+  const handleClose = async () => {
+    const { getCurrentWindow } = await import('@tauri-apps/api/window');
+    getCurrentWindow().close();
+  };
+
+  const handleOpenLink = async () => {
+    const { openUrl } = await import('@tauri-apps/plugin-opener');
+    await openUrl('https://cosmonet.info');
+  };
+
   return (
     <div className="flex flex-col h-screen w-screen bg-darkBg text-slate-800 font-sans selection:bg-glowCyan/20 selection:text-slate-900">
       {/* Header bar */}
-      <header className="flex items-center justify-between px-6 py-4 bg-white/90 border-b border-sky-100/45 glass shadow-md z-10">
+      <header data-tauri-drag-region className="flex items-center justify-between px-6 py-4 bg-white/90 border-b border-sky-100/45 glass shadow-md z-10 select-none cursor-default">
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2">
             <img src="/WolfMidLogo.png" className="w-9 h-9 object-contain" alt="Logo" />
@@ -488,6 +508,37 @@ Usa l'italiano e sii conciso ed efficace.`;
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
             </svg>
           </button>
+          
+          {/* Native-like window controls */}
+          <div className="flex items-center gap-1 ml-2 border-l border-slate-200 pl-3">
+            <button
+              onClick={handleMinimize}
+              className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-500 hover:text-slate-800 transition-colors"
+              title="Minimizza"
+            >
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M20 12H4" />
+              </svg>
+            </button>
+            <button
+              onClick={handleToggleMaximize}
+              className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-500 hover:text-slate-800 transition-colors"
+              title="Massimizza"
+            >
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <rect width="14" height="14" x="5" y="5" rx="1" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" />
+              </svg>
+            </button>
+            <button
+              onClick={handleClose}
+              className="p-1.5 rounded-lg hover:bg-red-50 text-slate-500 hover:text-red-650 transition-colors"
+              title="Chiudi"
+            >
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
         </div>
       </header>
 
@@ -863,6 +914,15 @@ Usa l'italiano e sii conciso ed efficace.`;
         <div className="flex items-center gap-2">
           <span className="w-1.5 h-1.5 rounded-full bg-glowCyan shadow-[0_0_6px_rgba(102,252,241,0.8)]"></span>
           <span>Sistema: <strong className="text-slate-700">{statusText}</strong></span>
+        </div>
+        <div className="flex items-center gap-1.5 text-xxs text-slate-400">
+          <span>Sviluppato da</span>
+          <button
+            onClick={handleOpenLink}
+            className="text-glowCyan hover:underline font-semibold cursor-pointer"
+          >
+            Daniele Spalletti di CosmoNet
+          </button>
         </div>
         <div className="flex items-center gap-5">
           <span>Verifica: <strong className={settings.verifier_enabled ? "text-emerald-400" : "text-slate-500"}>{settings.verifier_enabled ? "ATTIVA" : "DISATTIVA"}</strong></span>
