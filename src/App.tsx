@@ -586,6 +586,9 @@ export default function App() {
         settings.ollama_model
       );
 
+      // Read output aloud if TTS enabled (run immediately to avoid delay)
+      handleTTS(aiResponse);
+
       // 1.5 Coder Agent (OpenRouter) - Refines code output if active & detected
       if (settings.coder_enabled && settings.openrouter_api_key && (aiResponse.includes('```') || settings.active_mode === 'brief')) {
         setStatusText('Ottimizzazione codice (Programmatore)...');
@@ -607,15 +610,12 @@ export default function App() {
       setMessages(prev => prev.map(m => m.id === assistantMsgId ? { ...m, content: aiResponse, isGenerating: false } : m));
       addLog(`Risposta generata correttamente.`);
 
-      // Read output aloud if TTS enabled
-      handleTTS(aiResponse);
-
       // 2. Verifier Agent (OpenRouter)
       if (settings.verifier_enabled && settings.openrouter_api_key) {
         setStatusText('Verifica risposta...');
         const verResult = await verifyResponseWithOpenRouter(
           settings.openrouter_api_key,
-          settings.openrouter_model,
+          settings.openrouter_verifier_model,
           userQuery,
           aiResponse,
           kbContext,
