@@ -213,6 +213,26 @@ export default function App() {
     } catch (_) {}
   };
 
+  // Global Error Listeners
+  useEffect(() => {
+    const handleError = (e: ErrorEvent) => {
+      const errorMsg = `Errore Critico: ${e.message} in ${e.filename}:${e.lineno}`;
+      setLogs(prev => [errorMsg, ...prev].slice(0, 100));
+      invoke('write_app_log', { message: errorMsg }).catch(() => {});
+    };
+    const handleRejection = (e: PromiseRejectionEvent) => {
+      const errorMsg = `Promise Fallita: ${e.reason}`;
+      setLogs(prev => [errorMsg, ...prev].slice(0, 100));
+      invoke('write_app_log', { message: errorMsg }).catch(() => {});
+    };
+    window.addEventListener('error', handleError);
+    window.addEventListener('unhandledrejection', handleRejection);
+    return () => {
+      window.removeEventListener('error', handleError);
+      window.removeEventListener('unhandledrejection', handleRejection);
+    };
+  }, []);
+
   // Load Settings and KB on mount
   useEffect(() => {
     loadAppConfig();
