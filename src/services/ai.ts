@@ -163,9 +163,10 @@ Fornisci la tua verifica strutturata esclusivamente in JSON come richiesto.`;
     clearTimeout(timeoutId);
 
     if (!response.ok) {
+      const errBody = await response.text().catch(() => '');
       return {
         status: 'unavailable',
-        note: `Verifica non disponibile: errore API OpenRouter (Status ${response.status})`
+        note: `Verifica non disponibile: errore API OpenRouter (Status ${response.status}) sul modello ${model || 'qwen/qwen-2.5-72b-instruct:free'}. Dettaglio: ${errBody}`
       };
     }
 
@@ -271,7 +272,8 @@ Fornisci la versione finale ottimizzata mantenendo la stessa struttura della ris
     });
 
     if (!response.ok) {
-      throw new Error(`Errore API Programmatore (Status ${response.status})`);
+      const errBody = await response.text().catch(() => '');
+      throw new Error(`Errore API Programmatore (Status ${response.status}) sul modello ${model || 'qwen/qwen-2.5-coder-32b-instruct:free'}. Dettaglio: ${errBody}`);
     }
 
     const data = await response.json();

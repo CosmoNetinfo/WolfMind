@@ -401,12 +401,24 @@ export default function App() {
 
     if (settings.tts_engine === 'piper') {
       try {
-        const audioBase64 = await invoke<number[]>('generate_piper_speech', { text: cleanText });
-        const audioBlob = new Blob([new Uint8Array(audioBase64)], { type: 'audio/wav' });
-        const audioUrl = URL.createObjectURL(audioBlob);
-        const audio = new Audio(audioUrl);
-        audio.playbackRate = settings.tts_rate;
-        audio.play();
+        const sentences = cleanText.match(/[^.!?]+[.!?]+/g) || [cleanText];
+        for (let i = 0; i < sentences.length; i++) {
+          const sentence = sentences[i].trim();
+          if (!sentence) continue;
+          const audioBase64 = await invoke<number[]>('generate_piper_speech', { text: sentence });
+          const audioBlob = new Blob([new Uint8Array(audioBase64)], { type: 'audio/wav' });
+          const audioUrl = URL.createObjectURL(audioBlob);
+          const audio = new Audio(audioUrl);
+          audio.playbackRate = settings.tts_rate;
+          
+          await new Promise(resolve => {
+            audio.onended = resolve;
+            audio.play().catch(e => {
+              console.error("Audio play error", e);
+              resolve(null);
+            });
+          });
+        }
       } catch (error) {
         console.error("Piper TTS Error:", error);
         addLog(`Errore Piper TTS: ${error}`);
