@@ -389,6 +389,7 @@ export default function App() {
         audio.play();
       } catch (error) {
         console.error("Piper TTS Error:", error);
+        addLog(`Errore Piper TTS: ${error}`);
       }
     } else {
       const utterance = new SpeechSynthesisUtterance(cleanText);
