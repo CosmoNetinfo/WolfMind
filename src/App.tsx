@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { invoke } from '@tauri-apps/api/core';
+import { getVersion } from '@tauri-apps/api/app';
 import { open } from '@tauri-apps/plugin-dialog';
 import { readFile } from '@tauri-apps/plugin-fs';
 import CervelloTab from './components/CervelloTab';
@@ -79,6 +80,7 @@ export default function App() {
   const [logs, setLogs] = useState<string[]>([]);
   const [showSettingsPanel, setShowSettingsPanel] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
+  const [appVersion, setAppVersion] = useState<string>('');
 
   // Ollama specific state
   const [ollamaModels, setOllamaModels] = useState<{name: string, size: number}[]>([]);
@@ -216,6 +218,7 @@ export default function App() {
     loadAppConfig();
     setupSpeechRecognition();
     checkUpdates(false);
+    getVersion().then(v => setAppVersion(v)).catch(() => {});
   }, []);
 
   // Scroll to bottom of chat when messages change
@@ -1440,6 +1443,7 @@ Usa l'italiano e sii conciso ed efficace.`;
         <div className="flex items-center gap-2">
           <span className="w-1.5 h-1.5 rounded-full bg-glowCyan shadow-[0_0_6px_rgba(102,252,241,0.8)]"></span>
           <span>Sistema: <strong className="text-slate-700">{statusText}</strong></span>
+          <span className="ml-2 pl-2 border-l border-slate-300">v{appVersion}</span>
         </div>
         <div className="flex items-center gap-1.5 text-xxs text-slate-400">
           <span>Sviluppato da</span>
