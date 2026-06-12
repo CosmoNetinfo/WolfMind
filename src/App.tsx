@@ -615,7 +615,7 @@ export default function App() {
         setStatusText('Verifica risposta...');
         const verResult = await verifyResponseWithOpenRouter(
           settings.openrouter_api_key,
-          settings.openrouter_verifier_model,
+          settings.openrouter_model,
           userQuery,
           aiResponse,
           kbContext,
