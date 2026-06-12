@@ -159,9 +159,13 @@ Gestione diretta della tua conoscenza offline:
 
 WolfMind integra funzionalità all'avanguardia per la privacy, l'automazione e l'efficienza:
 
-1. **Integrazione LLM 100% Locali (Ollama)**:
-   - Supporto completo ad endpoint locali (es. `http://localhost:11434`) per far girare modelli come Llama 3 o Qwen in modalità totalmente offline. Configurabile dal pannello Impostazioni.
-2. **Ricerca Semantica RAG Locale**:
+1. **Motore Locale Integrato (Standalone)**:
+   - WolfMind include un orchestratore locale basato su **Llama.cpp**. Non hai più bisogno di avviare terminali o tenere aperto Ollama esternamente!
+   - Puoi importare l'eseguibile di `llama-server` direttamente dal pannello impostazioni.
+   - Supporto nativo per scaricare e importare modelli in formato `.gguf` (es. da HuggingFace). L'app gestisce l'accensione e lo spegnimento in background del motore di inferenza (su porta 11434) per lavorare in modo **100% offline e privato**.
+2. **Integrazione Ollama Esterno**:
+   - In alternativa al motore integrato, puoi comunque agganciarti a un processo Ollama esistente inserendo l'URL.
+3. **Ricerca Semantica RAG Locale**:
    - Motore di ricerca TF-IDF nativo sviluppato in Rust che scansiona e indicizza le note Markdown locali, estraendo i 3 file più pertinenti alla richiesta dell'utente per passarli come contesto immediato all'IA (RAG).
 3. **Attivazione Vocale Continua ("Wake Word")**:
    - Modalità di ascolto continuo nativo con rilevazione della frase di attivazione (es. *"Ehi Wolf"* o *"WolfMind"*). Esegue automaticamente i comandi vocali pronunciati dopo la wake word.

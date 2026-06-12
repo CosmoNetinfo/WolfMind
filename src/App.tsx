@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { invoke } from '@tauri-apps/api/core';
+import { open } from '@tauri-apps/plugin-dialog';
+import { readFile } from '@tauri-apps/plugin-fs';
 import CervelloTab from './components/CervelloTab';
 import { sendMessageToGroq, verifyResponseWithOpenRouter, refineCodeWithCoderAgent, ChatMessage, VerificationResult } from './services/ai';
 
@@ -25,10 +27,17 @@ interface AppSettings {
   rag_enabled: boolean;
 }
 
+export interface AttachmentUI {
+  type: 'image' | 'file';
+  name: string;
+  data: string;
+}
+
 interface MessageUI {
   id: string;
   role: 'user' | 'assistant';
   content: string;
+  attachments?: AttachmentUI[];
   verification?: VerificationResult;
   timestamp: string;
   isGenerating?: boolean;
@@ -40,7 +49,7 @@ export default function App() {
     groq_api_key: '',
     openrouter_api_key: '',
     groq_model: 'llama-3.3-70b-versatile',
-    openrouter_model: 'qwen/qwen-2.5-72b-instruct:free',
+    openrouter_model: 'qwen/qwen-2.5-72b-instruct',
     coder_enabled: true,
     openrouter_coder_model: 'qwen/qwen-2.5-coder-32b-instruct:free',
     tts_enabled: true,
@@ -62,14 +71,172 @@ export default function App() {
   const [activeTab, setActiveTab] = useState<'chat' | 'cervello' | 'sessioni'>('chat');
   const [messages, setMessages] = useState<MessageUI[]>([]);
   const [inputText, setInputText] = useState('');
+  const [attachments, setAttachments] = useState<AttachmentUI[]>([]);
   const [statusText, setStatusText] = useState('Pronto');
   const [isListening, setIsListening] = useState(false);
   const [logs, setLogs] = useState<string[]>([]);
   const [showSettingsPanel, setShowSettingsPanel] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
 
-  const showToast = (message: string, type: 'success' | 'error' | 'info' = 'success') => {
+  // Ollama specific state
+  const [ollamaModels, setOllamaModels] = useState<{name: string, size: number}[]>([]);
+  const [ollamaDownloadName, setOllamaDownloadName] = useState('');
+  const [isDownloadingOllama, setIsDownloadingOllama] = useState(false);
+  const [ollamaDownloadProgress, setOllamaDownloadProgress] = useState<{status: string, percent: number} | null>(null);
+
+  // Local Engine (GGUF) state
+  const [localModels, setLocalModels] = useState<string[]>([]);
+  const [selectedLocalModel, setSelectedLocalModel] = useState('');
+  const [engineRunning, setEngineRunning] = useState(false);
+
+  const showToast = (message: string, type: 'success' | 'error' | 'info' = 'info') => {
     setToast({ message, type });
+    setTimeout(() => setToast(null), 4000);
+  };
+
+  const fetchOllamaModels = async () => {
+    if (!settings.ollama_enabled) return;
+    try {
+      const res = await fetch(`${settings.ollama_url.replace(/\/$/, '')}/api/tags`);
+      if (res.ok) {
+        const data = await res.json();
+        setOllamaModels(data.models || []);
+      }
+    } catch (e) {
+      addLog(`Impossibile recuperare i modelli da Ollama.`);
+      setOllamaModels([]);
+    }
+  };
+
+  useEffect(() => {
+    fetchOllamaModels();
+  }, [settings.ollama_enabled, settings.ollama_url]);
+
+  const handleDownloadOllamaModel = async () => {
+    if (!ollamaDownloadName.trim() || isDownloadingOllama) return;
+    
+    setIsDownloadingOllama(true);
+    setOllamaDownloadProgress({ status: 'Avvio download...', percent: 0 });
+    
+    try {
+      const response = await fetch(`${settings.ollama_url.replace(/\/$/, '')}/api/pull`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: ollamaDownloadName.trim() })
+      });
+      
+      if (!response.body) throw new Error("ReadableStream not supported in response.");
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder('utf-8');
+      
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        
+        const chunk = decoder.decode(value, { stream: true });
+        const lines = chunk.split('\n').filter(l => l.trim() !== '');
+        
+        for (const line of lines) {
+          try {
+            const data = JSON.parse(line);
+            if (data.error) throw new Error(data.error);
+            
+            let percent = 0;
+            if (data.total && data.completed) {
+              percent = Math.round((data.completed / data.total) * 100);
+            }
+            
+            setOllamaDownloadProgress({
+              status: data.status,
+              percent
+            });
+            
+            if (data.status === 'success') {
+              showToast(`Modello ${ollamaDownloadName} scaricato con successo!`, 'success');
+              fetchOllamaModels();
+              setOllamaDownloadName('');
+            }
+          } catch (e) {
+            // ignore incomplete chunks
+          }
+        }
+      }
+    } catch (e: any) {
+      addLog(`Errore download Ollama: ${e.message}`);
+      showToast(`Errore download: ${e.message}`, 'error');
+    } finally {
+      setIsDownloadingOllama(false);
+      setTimeout(() => setOllamaDownloadProgress(null), 3000);
+    }
+  };
+
+  const refreshLocalModels = async () => {
+    try {
+      const models = await invoke<string[]>('get_local_models');
+      setLocalModels(models);
+      if (models.length > 0 && !selectedLocalModel) {
+        setSelectedLocalModel(models[0]);
+      }
+    } catch (e) {
+      addLog(`Errore recupero modelli GGUF: ${e}`);
+    }
+  };
+
+  useEffect(() => { refreshLocalModels(); }, []);
+
+  const handleImportEngine = async () => {
+    try {
+      const selected = await open({
+        filters: [{ name: 'Eseguibile', extensions: ['exe'] }]
+      });
+      if (selected && !Array.isArray(selected)) {
+        await invoke('import_engine', { sourcePath: selected });
+        showToast('Motore installato con successo!', 'success');
+      }
+    } catch (e: any) {
+      showToast(`Errore installazione motore: ${e}`, 'error');
+    }
+  };
+
+  const handleImportModel = async () => {
+    try {
+      const selected = await open({
+        filters: [{ name: 'Modelli GGUF', extensions: ['gguf'] }]
+      });
+      if (selected && !Array.isArray(selected)) {
+        showToast('Importazione modello in corso, potrebbe richiedere tempo...', 'info');
+        await invoke('import_model', { sourcePath: selected });
+        showToast('Modello importato con successo!', 'success');
+        refreshLocalModels();
+      }
+    } catch (e: any) {
+      showToast(`Errore importazione modello: ${e}`, 'error');
+    }
+  };
+
+  const handleStartEngine = async () => {
+    if (!selectedLocalModel) return;
+    try {
+      showToast('Avvio motore in corso...', 'info');
+      await invoke('start_local_engine', { modelName: selectedLocalModel });
+      setEngineRunning(true);
+      showToast('Motore avviato!', 'success');
+      // Forziamo l'uso del motore locale come "Ollama" sulle API
+      handleSaveSettings({ ...settings, ollama_enabled: true, ollama_url: 'http://localhost:11434' });
+    } catch (e: any) {
+      showToast(`Errore avvio motore: ${e}`, 'error');
+    }
+  };
+
+  const handleStopEngine = async () => {
+    try {
+      await invoke('stop_local_engine');
+      setEngineRunning(false);
+      showToast('Motore fermato.', 'info');
+    } catch (e: any) {
+      showToast(`Errore stop motore: ${e}`, 'error');
+    }
   };
 
   useEffect(() => {
@@ -85,6 +252,17 @@ export default function App() {
   const [sessions, setSessions] = useState<string[]>([]);
   const [selectedSessionContent, setSelectedSessionContent] = useState<string | null>(null);
   const [selectedSessionName, setSelectedSessionName] = useState<string | null>(null);
+
+  // Available TTS voices
+  const [availableVoices, setAvailableVoices] = useState<SpeechSynthesisVoice[]>([]);
+
+  useEffect(() => {
+    const updateVoices = () => {
+      setAvailableVoices(window.speechSynthesis.getVoices());
+    };
+    updateVoices();
+    window.speechSynthesis.onvoiceschanged = updateVoices;
+  }, []);
 
   // Speech API refs
   const recognitionRef = useRef<any>(null);
@@ -274,9 +452,12 @@ export default function App() {
     utterance.rate = settings.tts_rate || 1.0;
 
     const voices = window.speechSynthesis.getVoices();
-    const itVoice = voices.find(v => v.lang.startsWith('it') || v.name.toLowerCase().includes('italian'));
-    if (itVoice) {
-      utterance.voice = itVoice;
+    let selectedVoice = voices.find(v => v.voiceURI === settings.tts_voice || v.name === settings.tts_voice);
+    if (!selectedVoice) {
+      selectedVoice = voices.find(v => v.lang.startsWith('it') || v.name.toLowerCase().includes('italian'));
+    }
+    if (selectedVoice) {
+      utterance.voice = selectedVoice;
     }
 
     window.speechSynthesis.speak(utterance);
@@ -296,6 +477,53 @@ export default function App() {
     return context;
   };
 
+  const handleAttach = async () => {
+    try {
+      const selected = await open({
+        multiple: true,
+        filters: [{
+          name: 'Files',
+          extensions: ['png', 'jpeg', 'jpg', 'webp', 'txt', 'md', 'js', 'json', 'py', 'ts', 'tsx', 'csv']
+        }]
+      });
+      if (selected === null) return;
+      
+      const files = Array.isArray(selected) ? selected : [selected];
+      for (const file of files) {
+        const fileData = await readFile(file);
+        const ext = file.split('.').pop()?.toLowerCase();
+        const isImage = ['png', 'jpg', 'jpeg', 'webp'].includes(ext || '');
+        const filename = file.split(/[/\\]/).pop() || 'file';
+        
+        if (isImage) {
+          let binary = '';
+          const bytes = new Uint8Array(fileData);
+          const len = bytes.byteLength;
+          for (let i = 0; i < len; i++) {
+              binary += String.fromCharCode(bytes[i]);
+          }
+          const base64 = window.btoa(binary);
+          const mime = ext === 'png' ? 'image/png' : ext === 'webp' ? 'image/webp' : 'image/jpeg';
+          
+          setAttachments(prev => [...prev, {
+            type: 'image',
+            name: filename,
+            data: `data:${mime};base64,${base64}`
+          }]);
+        } else {
+          const text = new TextDecoder().decode(fileData);
+          setAttachments(prev => [...prev, {
+            type: 'file',
+            name: filename,
+            data: text
+          }]);
+        }
+      }
+    } catch (e) {
+      addLog(`Errore allegati: ${e}`);
+    }
+  };
+
   // Send message pipeline
   const handleSendMessage = async (e?: React.FormEvent, directQuery?: string) => {
     if (e) e.preventDefault();
@@ -310,17 +538,38 @@ export default function App() {
       id: Math.random().toString(),
       role: 'user',
       content: userQuery,
+      attachments: [...attachments],
       timestamp: now
     };
 
     setMessages(prev => [...prev, userMsg]);
+
+    let finalUserQuery = userQuery;
+    const textFiles = attachments.filter(a => a.type === 'file');
+    if (textFiles.length > 0) {
+      finalUserQuery += '\n\n--- ALLEGATI TESTUALI ---\n';
+      for (const file of textFiles) {
+        finalUserQuery += `\n[File: ${file.name}]\n${file.data}\n`;
+      }
+    }
+
+    let apiUserContent: any = finalUserQuery;
+    const images = attachments.filter(a => a.type === 'image');
+    if (images.length > 0) {
+      apiUserContent = [{ type: 'text', text: finalUserQuery }];
+      for (const img of images) {
+        apiUserContent.push({ type: 'image_url', image_url: { url: img.data } });
+      }
+    }
+
+    setAttachments([]);
 
     const activeProfilePrompt = profiles[settings.active_mode === 'brief' ? 'dev-brief' : settings.active_mode] || '';
     
     let kbContext = '';
     if (settings.rag_enabled) {
       try {
-        kbContext = await invoke<string>('query_kb_rag', { query: userQuery, maxResults: 3 });
+        kbContext = await invoke<string>('query_kb_rag', { query: finalUserQuery, maxResults: 3 });
         addLog("RAG: Recuperato contesto pertinente dal cervello locale.");
       } catch (e) {
         addLog(`Errore RAG: ${e}. Uso del fallback piatto.`);
@@ -332,10 +581,19 @@ export default function App() {
 
     const compiledSystemPrompt = `${activeProfilePrompt}\n\nCONTESTO KNOWLEDGE BASE DI RIFERIMENTO:\n${kbContext}`;
 
-    const history: ChatMessage[] = messages.map(m => ({
-      role: (m.role === 'user' ? 'user' : 'assistant') as 'user' | 'assistant',
-      content: m.content
-    })).concat([{ role: 'user' as const, content: userQuery }]);
+    const history: ChatMessage[] = messages.map(m => {
+      let content: any = m.content;
+      if (m.attachments && m.attachments.some(a => a.type === 'image')) {
+        content = [{ type: 'text', text: m.content }];
+        for (const img of m.attachments.filter(a => a.type === 'image')) {
+          content.push({ type: 'image_url', image_url: { url: img.data } });
+        }
+      }
+      return {
+        role: (m.role === 'user' ? 'user' : 'assistant') as 'user' | 'assistant',
+        content
+      };
+    }).concat([{ role: 'user' as const, content: apiUserContent }]);
 
     const assistantMsgId = Math.random().toString();
     const assistantMsgPlaceholder: MessageUI = {
@@ -687,10 +945,10 @@ Usa l'italiano e sii conciso ed efficace.`;
             </div>
           </div>
 
-          {/* Ollama local configuration */}
+          {/* Integrated Engine Configuration */}
           <div className="pt-2 border-t border-slate-200 space-y-4">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-slate-700">Usa Ollama (Local LLM)</span>
+              <span className="text-xs font-semibold text-slate-700">Motore Integrato (GGUF / Ollama)</span>
               <input
                 type="checkbox"
                 checked={settings.ollama_enabled}
@@ -700,27 +958,82 @@ Usa l'italiano e sii conciso ed efficace.`;
             </div>
             {settings.ollama_enabled && (
               <>
-                <div>
-                  <label className="block text-xxs font-semibold uppercase text-slate-400 tracking-wider mb-1">Ollama URL</label>
+                <div className="space-y-2 bg-slate-50 p-3 rounded-xl border border-slate-200/50">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xxs font-bold text-slate-500 uppercase tracking-wider">Llama.cpp Standalone</span>
+                    <button 
+                      onClick={handleImportEngine}
+                      className="text-[9px] bg-slate-200 hover:bg-slate-300 text-slate-700 px-2 py-1 rounded transition"
+                    >
+                      Installa llama-server.exe
+                    </button>
+                  </div>
+                  
+                  <div className="pt-2">
+                    <label className="block text-xxs font-semibold uppercase text-slate-400 tracking-wider mb-1">Modello GGUF Selezionato</label>
+                    <div className="flex gap-2">
+                      <select
+                        value={selectedLocalModel}
+                        onChange={(e) => setSelectedLocalModel(e.target.value)}
+                        className="flex-1 premium-input text-xs px-3 py-2"
+                      >
+                        {localModels.length === 0 && <option value="">Nessun modello trovato</option>}
+                        {localModels.map(m => (
+                          <option key={m} value={m}>{m}</option>
+                        ))}
+                      </select>
+                      <button 
+                        onClick={handleImportModel}
+                        className="px-2 py-2 bg-slate-200 text-slate-700 text-xs font-bold rounded-lg hover:bg-slate-300 transition-all"
+                        title="Importa file .gguf"
+                      >
+                        + Importa
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="pt-2 flex gap-2">
+                    {engineRunning ? (
+                      <button onClick={handleStopEngine} className="flex-1 bg-red-500 hover:bg-red-600 text-white text-xs font-bold py-2 rounded-lg transition-all shadow-sm">
+                        Spegni Motore
+                      </button>
+                    ) : (
+                      <button onClick={handleStartEngine} disabled={!selectedLocalModel} className="flex-1 bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 text-white text-xs font-bold py-2 rounded-lg transition-all shadow-sm">
+                        Avvia Motore
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                <div className="pt-3 border-t border-slate-200/50 mt-3">
+                  <label className="block text-xxs font-semibold uppercase text-slate-400 tracking-wider mb-1">Ollama Esterno (Opzionale)</label>
                   <input
                     type="text"
                     value={settings.ollama_url}
                     onChange={(e) => handleSaveSettings({ ...settings, ollama_url: e.target.value })}
                     placeholder="http://localhost:11434"
-                    className="w-full premium-input text-xs px-4 py-2"
+                    className="w-full premium-input text-xs px-4 py-2 mb-2"
                   />
+                  {ollamaModels.length > 0 ? (
+                    <select
+                      value={settings.ollama_model}
+                      onChange={(e) => handleSaveSettings({ ...settings, ollama_model: e.target.value })}
+                      className="w-full premium-input text-xs px-3 py-2"
+                    >
+                      {ollamaModels.map(m => (
+                        <option key={m.name} value={m.name}>{m.name}</option>
+                      ))}
+                    </select>
+                  ) : (
+                    <input
+                      type="text"
+                      value={settings.ollama_model}
+                      onChange={(e) => handleSaveSettings({ ...settings, ollama_model: e.target.value })}
+                      placeholder="llama3 (Nome modello per l'API)"
+                      className="w-full premium-input text-xs px-4 py-2"
+                    />
+                  )}
                 </div>
-                <div>
-                  <label className="block text-xxs font-semibold uppercase text-slate-400 tracking-wider mb-1">Ollama Model</label>
-                  <input
-                    type="text"
-                    value={settings.ollama_model}
-                    onChange={(e) => handleSaveSettings({ ...settings, ollama_model: e.target.value })}
-                    placeholder="llama3"
-                    className="w-full premium-input text-xs px-4 py-2"
-                  />
-                </div>
-              </>
             )}
           </div>
 
@@ -746,6 +1059,7 @@ Usa l'italiano e sii conciso ed efficace.`;
                 onChange={(e) => handleSaveSettings({ ...settings, openrouter_model: e.target.value })}
                 className="w-full premium-input text-xs px-3 py-2"
               >
+                <option value="qwen/qwen-2.5-72b-instruct">qwen/qwen-2.5-72b-instruct</option>
                 <option value="qwen/qwen-2.5-72b-instruct:free">qwen/qwen-2.5-72b-instruct:free</option>
                 <option value="mistralai/mistral-7b-instruct:free">mistralai/mistral-7b-instruct:free</option>
                 <option value="deepseek/deepseek-r1:free">deepseek/deepseek-r1:free</option>
@@ -836,6 +1150,23 @@ Usa l'italiano e sii conciso ed efficace.`;
                 className="w-full accent-glowCyan cursor-pointer h-1 rounded-lg bg-white/10"
               />
             </div>
+            {settings.tts_enabled && (
+              <div>
+                <label className="block text-xxs font-semibold uppercase text-slate-400 tracking-wider mb-1">Voce TTS</label>
+                <select
+                  value={settings.tts_voice}
+                  onChange={(e) => handleSaveSettings({ ...settings, tts_voice: e.target.value })}
+                  className="w-full premium-input text-xs px-3 py-2"
+                >
+                  <option value="auto-italian">Italiano (Automatico)</option>
+                  {availableVoices.map((v) => (
+                    <option key={v.voiceURI} value={v.voiceURI}>
+                      {v.name} ({v.lang})
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
           </div>
 
           {/* Update Section */}
@@ -909,6 +1240,20 @@ Usa l'italiano e sii conciso ed efficace.`;
                             : 'bg-white border-slate-200/80 text-slate-800 shadow-md'
                         }`}
                       >
+                        {msg.attachments && msg.attachments.length > 0 && (
+                          <div className="flex flex-wrap gap-2 mb-3">
+                            {msg.attachments.map((att, idx) => (
+                              <div key={idx} className="flex items-center gap-2 bg-black/10 rounded-lg p-2 max-w-[200px]" title={att.name}>
+                                {att.type === 'image' ? (
+                                  <img src={att.data} alt="attachment" className="w-10 h-10 object-cover rounded border border-white/20" />
+                                ) : (
+                                  <svg className="w-5 h-5 flex-shrink-0 opacity-80" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" /></svg>
+                                )}
+                                <span className="text-xs truncate font-medium opacity-90">{att.name}</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
                         {msg.isGenerating ? (
                           <div className="flex items-center gap-3 py-1.5 text-glowCyan font-medium">
                             <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
@@ -995,42 +1340,77 @@ Usa l'italiano e sii conciso ed efficace.`;
               </div>
 
               {/* Chat Input form */}
-              <form onSubmit={handleSendMessage} className="p-5 bg-white/95 border-t border-sky-100/40 flex items-center gap-3.5 backdrop-blur-md">
-                <button
-                  type="button"
-                  onClick={toggleListening}
-                  className={`p-3.5 rounded-2xl border transition-all duration-350 shadow-md ${
-                    isListening
-                      ? 'bg-red-50 text-red-500 border-red-300 animate-pulse shadow-red-100'
-                      : 'bg-white text-glowCyan border-slate-200 hover:border-glowCyan/50 hover:bg-glowCyan/5'
-                  }`}
-                  title={isListening ? "Ferma ascolto" : "Parla"}
-                >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
-                  </svg>
-                </button>
+              <div className="bg-white/95 border-t border-sky-100/40 backdrop-blur-md flex flex-col">
+                {attachments.length > 0 && (
+                  <div className="flex gap-2 p-3 pb-0 overflow-x-auto">
+                    {attachments.map((att, idx) => (
+                      <div key={idx} className="relative flex items-center justify-center bg-slate-100 border border-slate-200 rounded-lg p-1.5 min-w-[60px] h-[60px] group">
+                        {att.type === 'image' ? (
+                          <img src={att.data} alt="attachment" className="w-full h-full object-cover rounded-md" />
+                        ) : (
+                          <div className="flex flex-col items-center">
+                            <svg className="w-6 h-6 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" /></svg>
+                            <span className="text-[9px] truncate max-w-[50px] mt-1 text-slate-600">{att.name}</span>
+                          </div>
+                        )}
+                        <button 
+                          onClick={() => setAttachments(prev => prev.filter((_, i) => i !== idx))}
+                          className="absolute -top-1.5 -right-1.5 bg-red-500 text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
+                        >
+                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <form onSubmit={handleSendMessage} className="p-5 flex items-center gap-3.5">
+                  <button
+                    type="button"
+                    onClick={handleAttach}
+                    className="p-3.5 rounded-2xl border transition-all duration-300 bg-slate-50 text-slate-500 border-slate-200 hover:border-glowCyan hover:text-glowCyan hover:bg-glowCyan/5 shadow-sm"
+                    title="Allega file o immagine"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
+                    </svg>
+                  </button>
 
-                <input
-                  type="text"
-                  value={inputText}
-                  onChange={(e) => setInputText(e.target.value)}
-                  placeholder={isListening ? "Riconoscimento vocale attivo..." : `Invia un messaggio in modalità ${settings.active_mode.toUpperCase()}...`}
-                  className="flex-1 premium-input px-5 py-4 text-sm"
-                  disabled={isListening}
-                />
+                  <button
+                    type="button"
+                    onClick={toggleListening}
+                    className={`p-3.5 rounded-2xl border transition-all duration-350 shadow-md ${
+                      isListening
+                        ? 'bg-red-50 text-red-500 border-red-300 animate-pulse shadow-red-100'
+                        : 'bg-white text-glowCyan border-slate-200 hover:border-glowCyan/50 hover:bg-glowCyan/5'
+                    }`}
+                    title={isListening ? "Ferma ascolto" : "Parla"}
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+                    </svg>
+                  </button>
 
-                <button
-                  type="submit"
-                  disabled={!inputText.trim()}
-                  className="p-3.5 bg-glowCyan text-white border border-glowCyan hover:bg-glowCyan/90 disabled:bg-slate-100 disabled:border-slate-200 disabled:text-slate-400 rounded-2xl transition-all duration-300 font-semibold shadow-md glow-shadow-cyan-hover"
-                  title="Invia"
-                >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-                  </svg>
-                </button>
-              </form>
+                  <input
+                    type="text"
+                    value={inputText}
+                    onChange={(e) => setInputText(e.target.value)}
+                    placeholder={isListening ? "Riconoscimento vocale attivo..." : `Invia un messaggio in modalità ${settings.active_mode.toUpperCase()}...`}
+                    className="flex-1 premium-input px-5 py-4 text-sm"
+                    disabled={isListening}
+                  />
+
+                  <button
+                    type="submit"
+                    disabled={!inputText.trim() && attachments.length === 0}
+                    className="p-3.5 bg-glowCyan text-white border border-glowCyan hover:bg-glowCyan/90 disabled:bg-slate-100 disabled:border-slate-200 disabled:text-slate-400 rounded-2xl transition-all duration-300 font-semibold shadow-md glow-shadow-cyan-hover"
+                    title="Invia"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                    </svg>
+                  </button>
+                </form>
+              </div>
             </div>
           )}
 

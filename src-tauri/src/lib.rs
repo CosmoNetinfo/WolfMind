@@ -1,15 +1,30 @@
 use std::collections::HashMap;
 use std::fs;
 use std::path::PathBuf;
+use std::sync::Mutex;
+use std::process::{Child, Command};
+use tauri::State;
+
+struct EngineState {
+    process: Mutex<Option<Child>>,
+}
 
 // Helper function to get the base installation directory (or CWD in dev)
 fn get_base_dir() -> PathBuf {
     if let Ok(exe_path) = std::env::current_exe() {
         if let Some(parent) = exe_path.parent() {
             // If running inside cargo build dirs, fallback to CWD
-            if parent.file_name().map(|n| n == "debug" || n == "release").unwrap_or(false) {
+            if parent
+                .file_name()
+                .map(|n| n == "debug" || n == "release")
+                .unwrap_or(false)
+            {
                 if let Some(grandparent) = parent.parent() {
-                    if grandparent.file_name().map(|n| n == "target").unwrap_or(false) {
+                    if grandparent
+                        .file_name()
+                        .map(|n| n == "target")
+                        .unwrap_or(false)
+                    {
                         if let Ok(cwd) = std::env::current_dir() {
                             return cwd;
                         }
@@ -30,12 +45,16 @@ fn ensure_dirs_and_defaults() -> Result<(), String> {
     let cervello_dir = base.join("cervello");
     let sessioni_dir = cervello_dir.join("sessioni");
     let logs_dir = base.join("logs");
+    let engine_dir = base.join("engine");
+    let models_dir = base.join("models");
 
     fs::create_dir_all(&config_dir).map_err(|e| e.to_string())?;
     fs::create_dir_all(&profili_dir).map_err(|e| e.to_string())?;
     fs::create_dir_all(&cervello_dir).map_err(|e| e.to_string())?;
     fs::create_dir_all(&sessioni_dir).map_err(|e| e.to_string())?;
     fs::create_dir_all(&logs_dir).map_err(|e| e.to_string())?;
+    fs::create_dir_all(&engine_dir).map_err(|e| e.to_string())?;
+    fs::create_dir_all(&models_dir).map_err(|e| e.to_string())?;
 
     // Create default settings if missing
     let settings_path = config_dir.join("settings.json");
@@ -254,7 +273,10 @@ fn get_profiles() -> Result<HashMap<String, String>, String> {
 #[tauri::command]
 fn save_profile(name: String, content: String) -> Result<(), String> {
     ensure_dirs_and_defaults()?;
-    let profile_path = get_base_dir().join("config").join("profili").join(format!("{}.md", name));
+    let profile_path = get_base_dir()
+        .join("config")
+        .join("profili")
+        .join(format!("{}.md", name));
     fs::write(profile_path, content).map_err(|e| e.to_string())
 }
 
@@ -357,7 +379,10 @@ fn query_kb_rag(query: String, max_results: usize) -> Result<String, String> {
 #[tauri::command]
 fn save_session(name: String, content: String) -> Result<(), String> {
     ensure_dirs_and_defaults()?;
-    let session_path = get_base_dir().join("cervello").join("sessioni").join(format!("{}.md", name));
+    let session_path = get_base_dir()
+        .join("cervello")
+        .join("sessioni")
+        .join(format!("{}.md", name));
     fs::write(session_path, content).map_err(|e| e.to_string())?;
     auto_git_commit_and_push(&format!("sessione {}", name));
     Ok(())
@@ -404,10 +429,93 @@ fn write_app_log(message: String) -> Result<(), String> {
     writeln!(file, "[{}] {}", now, message).map_err(|e| e.to_string())
 }
 
+#[tauri::command]
+fn start_local_engine(model_name: String, state: State<'_, EngineState>) -> Result<(), String> {
+    let base = get_base_dir();
+    let engine_path = base.join("engine").join("llama-server.exe");
+    let model_path = base.join("models").join(&model_name);
+
+    if !engine_path.exists() {
+        return Err("Motore (llama-server.exe) non trovato nella cartella engine.".to_string());
+    }
+    if !model_path.exists() {
+        return Err("Modello GGUF non trovato.".to_string());
+    }
+
+    let mut process_guard = state.process.lock().map_err(|e| e.to_string())?;
+    
+    // Stop existing if any
+    if let Some(mut child) = process_guard.take() {
+        let _ = child.kill();
+    }
+
+    let child = Command::new(&engine_path)
+        .arg("-m")
+        .arg(&model_path)
+        .arg("--port")
+        .arg("11434")
+        .spawn()
+        .map_err(|e| e.to_string())?;
+
+    *process_guard = Some(child);
+    Ok(())
+}
+
+#[tauri::command]
+fn stop_local_engine(state: State<'_, EngineState>) -> Result<(), String> {
+    let mut process_guard = state.process.lock().map_err(|e| e.to_string())?;
+    if let Some(mut child) = process_guard.take() {
+        let _ = child.kill();
+    }
+    Ok(())
+}
+
+#[tauri::command]
+fn get_local_models() -> Result<Vec<String>, String> {
+    ensure_dirs_and_defaults()?;
+    let models_dir = get_base_dir().join("models");
+    let mut models = Vec::new();
+    let entries = fs::read_dir(models_dir).map_err(|e| e.to_string())?;
+    for entry in entries {
+        let entry = entry.map_err(|e| e.to_string())?;
+        let path = entry.path();
+        if path.is_file() && path.extension().map(|s| s == "gguf").unwrap_or(false) {
+            let filename = path.file_name().unwrap().to_string_lossy().into_owned();
+            models.push(filename);
+        }
+    }
+    models.sort();
+    Ok(models)
+}
+
+#[tauri::command]
+fn import_engine(source_path: String) -> Result<(), String> {
+    ensure_dirs_and_defaults()?;
+    let engine_path = get_base_dir().join("engine").join("llama-server.exe");
+    fs::copy(source_path, engine_path).map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[tauri::command]
+fn import_model(source_path: String) -> Result<(), String> {
+    ensure_dirs_and_defaults()?;
+    let path = PathBuf::from(&source_path);
+    let filename = path.file_name().ok_or("Invalid file")?.to_string_lossy().into_owned();
+    let target_path = get_base_dir().join("models").join(filename);
+    fs::copy(source_path, target_path).map_err(|e| e.to_string())?;
+    Ok(())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let _ = ensure_dirs_and_defaults();
     tauri::Builder::default()
+        .manage(EngineState {
+            process: Mutex::new(None),
+        })
+        .plugin(tauri_plugin_shell::init())
+        .plugin(tauri_plugin_fs::init())
+        .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .invoke_handler(tauri::generate_handler![
@@ -422,9 +530,13 @@ pub fn run() {
             get_sessions,
             read_session,
             write_app_log,
-            query_kb_rag
+            query_kb_rag,
+            start_local_engine,
+            stop_local_engine,
+            get_local_models,
+            import_engine,
+            import_model
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
-
