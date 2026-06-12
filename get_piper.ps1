@@ -1,4 +1,8 @@
 $engineDir = "engine\piper"
+if (Test-Path "$engineDir\piper.exe") {
+    Write-Host "Piper is already installed in $engineDir. Skipping download."
+    exit
+}
 New-Item -ItemType Directory -Force -Path $engineDir
 
 $piperUrl = "https://github.com/rhasspy/piper/releases/download/2023.11.14-2/piper_windows_amd64.zip"
