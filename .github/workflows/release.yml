@@ -51,6 +51,11 @@ jobs:
       - name: Install frontend dependencies
         run: npm ci
 
+      - name: Download Piper TTS (Windows)
+        if: matrix.platform == 'windows-latest'
+        shell: pwsh
+        run: ./get_piper.ps1
+
       - name: Read README.md
         id: readme
         shell: bash

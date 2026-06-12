@@ -34,3 +34,6 @@ dist-ssr
 /src-tauri/*.key
 /src-tauri/*.key.pub
 
+
+/engine/
+/models/

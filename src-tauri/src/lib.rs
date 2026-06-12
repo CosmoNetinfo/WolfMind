@@ -426,6 +426,7 @@ fn write_app_log(message: String) -> Result<(), String> {
 
 use tauri_plugin_shell::process::CommandChild;
 use tauri_plugin_shell::ShellExt;
+use tauri::Manager;
 
 struct EngineState {
     process: Mutex<Option<CommandChild>>,
@@ -503,9 +504,8 @@ fn import_model(source_path: String) -> Result<(), String> {
 }
 
 #[tauri::command]
-fn generate_piper_speech(text: String) -> Result<Vec<u8>, String> {
-    let base = get_base_dir();
-    let piper_dir = base.join("engine").join("piper");
+fn generate_piper_speech(app: tauri::AppHandle, text: String) -> Result<Vec<u8>, String> {
+    let piper_dir = app.path().resource_dir().map_err(|e| e.to_string())?.join("engine").join("piper");
     let piper_exe = piper_dir.join("piper.exe");
     let model_path = piper_dir.join("it_IT-paola-medium.onnx");
     let out_file = piper_dir.join("out.wav");
