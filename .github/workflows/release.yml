@@ -61,6 +61,6 @@ jobs:
           tagName: ${{ github.ref_name }}
           releaseName: "WolfMind ${{ github.ref_name }}"
           releaseBody: ${{ steps.readme.outputs.body }}
-          releaseDraft: true
+          releaseDraft: false
           prerelease: false
           args: ${{ matrix.args }}

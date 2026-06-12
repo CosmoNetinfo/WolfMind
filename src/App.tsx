@@ -731,11 +731,13 @@ Usa l'italiano e sii conciso ed efficace.`;
     try {
       addLog("Verifica aggiornamenti in corso...");
       const { check } = await import('@tauri-apps/plugin-updater');
+      const { message, ask } = await import('@tauri-apps/plugin-dialog');
       const update = await check();
       if (update) {
         addLog(`Nuovo aggiornamento disponibile: v${update.version}`);
-        const confirmUpdate = window.confirm(
-          `Nuova versione disponibile: v${update.version}\n\nDesideri scaricare ed installare l'aggiornamento adesso?`
+        const confirmUpdate = await ask(
+          `Nuova versione disponibile: v${update.version}\n\nDesideri scaricare ed installare l'aggiornamento adesso?`,
+          { title: 'Aggiornamento Disponibile', kind: 'info' }
         );
         if (confirmUpdate) {
           addLog("Download dell'aggiornamento avviato...");
@@ -745,13 +747,14 @@ Usa l'italiano e sii conciso ed efficace.`;
       } else {
         addLog("Nessun aggiornamento disponibile.");
         if (manual) {
-          alert("Nessun aggiornamento disponibile. L'applicazione è aggiornata.");
+          await message("Nessun aggiornamento disponibile. L'applicazione è aggiornata.", { title: 'Nessun Aggiornamento', kind: 'info' });
         }
       }
     } catch (e) {
       addLog(`Errore durante il controllo degli aggiornamenti: ${e}`);
       if (manual) {
-        alert(`Errore nel controllo degli aggiornamenti: ${e}`);
+        const { message } = await import('@tauri-apps/plugin-dialog');
+        await message(`Errore nel controllo degli aggiornamenti: ${e}`, { title: 'Errore Aggiornamento', kind: 'error' });
       }
     }
   };
