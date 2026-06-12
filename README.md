@@ -153,26 +153,34 @@ Gestione diretta della tua conoscenza offline:
 * Consente di sfogliare tutte le vecchie sessioni salvate.
 * Clicca su un file per visualizzare il log completo della conversazione precedente formattato in formato testuale all'interno del visualizzatore a destra.
 
+### ⚙️ Motore Locale Integrato (Llama.cpp Sidecar)
+WolfMind non ha più bisogno di Ollama o di processi esterni per funzionare offline! Il motore di intelligenza artificiale è **incluso direttamente nell'applicazione** (grazie all'architettura Tauri Sidecar).
+
+**Come utilizzarlo:**
+1. Vai nelle **Impostazioni** (l'icona dell'ingranaggio in alto a destra).
+2. Sotto la sezione *Llama.cpp Standalone*, clicca su **Importa Modello GGUF**.
+3. Seleziona qualsiasi modello scaricato da HuggingFace (es. `Llama-3-8B-Instruct.gguf`).
+4. Usa l'interruttore **Accendi / Spegni** per avviare il motore. L'app gestirà tutto in totale background e si collegherà automaticamente sulla porta locale (nessuna finestra del terminale visibile!).
+
 ---
 
 ## ⚡ Funzionalità Avanzate Implementate
 
 WolfMind integra funzionalità all'avanguardia per la privacy, l'automazione e l'efficienza:
 
-1. **Motore Locale Integrato (Standalone)**:
-   - WolfMind include un orchestratore locale basato su **Llama.cpp**. Non hai più bisogno di avviare terminali o tenere aperto Ollama esternamente!
-   - Puoi importare l'eseguibile di `llama-server` direttamente dal pannello impostazioni.
-   - Supporto nativo per scaricare e importare modelli in formato `.gguf` (es. da HuggingFace). L'app gestisce l'accensione e lo spegnimento in background del motore di inferenza (su porta 11434) per lavorare in modo **100% offline e privato**.
-2. **Integrazione Ollama Esterno**:
-   - In alternativa al motore integrato, puoi comunque agganciarti a un processo Ollama esistente inserendo l'URL.
+1. **Motore Locale Integrato (Tauri Sidecar)**:
+   - WolfMind include l'eseguibile **llama-server.exe** (accelerato tramite Vulkan) direttamente all'interno dell'installer. Zero configurazioni richieste!
+   - Supporto nativo per gestire, accendere e spegnere modelli `.gguf` in totale background. 100% offline e privato.
+2. **Supporto Ollama Esterno**:
+   - Se preferisci, puoi comunque usare un server Ollama già esistente sul tuo computer o rete locale.
 3. **Ricerca Semantica RAG Locale**:
-   - Motore di ricerca TF-IDF nativo sviluppato in Rust che scansiona e indicizza le note Markdown locali, estraendo i 3 file più pertinenti alla richiesta dell'utente per passarli come contesto immediato all'IA (RAG).
-3. **Attivazione Vocale Continua ("Wake Word")**:
-   - Modalità di ascolto continuo nativo con rilevazione della frase di attivazione (es. *"Ehi Wolf"* o *"WolfMind"*). Esegue automaticamente i comandi vocali pronunciati dopo la wake word.
-4. **Git Sync Automatico delle Note**:
-   - Committing e push automatici in background della cartella `/cervello/` su repository remoto ad ogni modifica o sessione salvata, assicurando backup e sincronizzazione immediati.
-5. **Modulo Auto-Updater (Tauri v2)**:
-   - Controllo degli aggiornamenti all'avvio o manuale con firma digitale di sicurezza e installazione nativa guidata per garantire che l'app rimanga sempre aggiornata.
+   - Motore di ricerca TF-IDF nativo in Rust che scansiona le note Markdown e inietta dinamicamente il contesto rilevante nella chat.
+4. **Attivazione Vocale Continua ("Wake Word")**:
+   - Ascolto continuo con rilevamento di frasi di attivazione (es. *"Ehi Wolf"*) e filtri intelligenti.
+5. **Git Sync Automatico delle Note**:
+   - Committing automatico in background della cartella `/cervello/` su repository remoto, garantendo un backup invisibile ma costante.
+6. **Modulo Auto-Updater (Tauri v2)**:
+   - Aggiornamenti automatici (Over-The-Air) gestiti internamente.
 
 
 
