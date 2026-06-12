@@ -402,12 +402,37 @@ export default function App() {
     if (settings.tts_engine === 'piper') {
       try {
         const sentences = cleanText.match(/[^.!?]+[.!?]+/g) || [cleanText];
+        const audioQueue: string[] = [];
+        let isCancelled = false;
+
+        // Producer: Generates audio sequentially in background
+        const generator = async () => {
+          for (let i = 0; i < sentences.length; i++) {
+            if (isCancelled) break;
+            const sentence = sentences[i].trim();
+            if (!sentence) continue;
+            try {
+              const audioBase64 = await invoke<number[]>('generate_piper_speech', { text: sentence });
+              const audioBlob = new Blob([new Uint8Array(audioBase64)], { type: 'audio/wav' });
+              audioQueue.push(URL.createObjectURL(audioBlob));
+            } catch (e) {
+              console.error("Errore generazione frase", e);
+            }
+          }
+        };
+        generator();
+
+        // Consumer: Plays audio from queue
         for (let i = 0; i < sentences.length; i++) {
-          const sentence = sentences[i].trim();
-          if (!sentence) continue;
-          const audioBase64 = await invoke<number[]>('generate_piper_speech', { text: sentence });
-          const audioBlob = new Blob([new Uint8Array(audioBase64)], { type: 'audio/wav' });
-          const audioUrl = URL.createObjectURL(audioBlob);
+          if (!sentences[i].trim()) continue;
+          
+          // Wait for the next audio to be generated
+          while (audioQueue.length === 0 && !isCancelled) {
+            await new Promise(r => setTimeout(r, 100));
+          }
+          if (isCancelled) break;
+
+          const audioUrl = audioQueue.shift()!;
           const audio = new Audio(audioUrl);
           audio.playbackRate = settings.tts_rate;
           
