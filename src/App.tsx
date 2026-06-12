@@ -959,16 +959,6 @@ Usa l'italiano e sii conciso ed efficace.`;
             {settings.ollama_enabled && (
               <>
                 <div className="space-y-2 bg-slate-50 p-3 rounded-xl border border-slate-200/50">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xxs font-bold text-slate-500 uppercase tracking-wider">Llama.cpp Standalone</span>
-                    <button 
-                      onClick={handleImportEngine}
-                      className="text-[9px] bg-slate-200 hover:bg-slate-300 text-slate-700 px-2 py-1 rounded transition"
-                    >
-                      Installa llama-server.exe
-                    </button>
-                  </div>
-                  
                   <div className="pt-2">
                     <label className="block text-xxs font-semibold uppercase text-slate-400 tracking-wider mb-1">Modello GGUF Selezionato</label>
                     <div className="flex gap-2">

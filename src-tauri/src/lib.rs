@@ -2,12 +2,7 @@ use std::collections::HashMap;
 use std::fs;
 use std::path::PathBuf;
 use std::sync::Mutex;
-use std::process::{Child, Command};
 use tauri::State;
-
-struct EngineState {
-    process: Mutex<Option<Child>>,
-}
 
 // Helper function to get the base installation directory (or CWD in dev)
 fn get_base_dir() -> PathBuf {
@@ -429,15 +424,18 @@ fn write_app_log(message: String) -> Result<(), String> {
     writeln!(file, "[{}] {}", now, message).map_err(|e| e.to_string())
 }
 
+use tauri_plugin_shell::process::CommandChild;
+use tauri_plugin_shell::ShellExt;
+
+struct EngineState {
+    process: Mutex<Option<CommandChild>>,
+}
+
 #[tauri::command]
-fn start_local_engine(model_name: String, state: State<'_, EngineState>) -> Result<(), String> {
+fn start_local_engine(model_name: String, state: State<'_, EngineState>, app: tauri::AppHandle) -> Result<(), String> {
     let base = get_base_dir();
-    let engine_path = base.join("engine").join("llama-server.exe");
     let model_path = base.join("models").join(&model_name);
 
-    if !engine_path.exists() {
-        return Err("Motore (llama-server.exe) non trovato nella cartella engine.".to_string());
-    }
     if !model_path.exists() {
         return Err("Modello GGUF non trovato.".to_string());
     }
@@ -445,17 +443,15 @@ fn start_local_engine(model_name: String, state: State<'_, EngineState>) -> Resu
     let mut process_guard = state.process.lock().map_err(|e| e.to_string())?;
     
     // Stop existing if any
-    if let Some(mut child) = process_guard.take() {
+    if let Some(child) = process_guard.take() {
         let _ = child.kill();
     }
 
-    let child = Command::new(&engine_path)
-        .arg("-m")
-        .arg(&model_path)
-        .arg("--port")
-        .arg("11434")
-        .spawn()
-        .map_err(|e| e.to_string())?;
+    let sidecar_command = app.shell().sidecar("llama-server")
+        .map_err(|e| e.to_string())?
+        .args(["-m", model_path.to_str().unwrap(), "--port", "11434"]);
+        
+    let (_rx, child) = sidecar_command.spawn().map_err(|e| e.to_string())?;
 
     *process_guard = Some(child);
     Ok(())
@@ -464,7 +460,7 @@ fn start_local_engine(model_name: String, state: State<'_, EngineState>) -> Resu
 #[tauri::command]
 fn stop_local_engine(state: State<'_, EngineState>) -> Result<(), String> {
     let mut process_guard = state.process.lock().map_err(|e| e.to_string())?;
-    if let Some(mut child) = process_guard.take() {
+    if let Some(child) = process_guard.take() {
         let _ = child.kill();
     }
     Ok(())
