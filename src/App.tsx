@@ -253,11 +253,13 @@ export default function App() {
       
       // Auto-migrate broken models
       let settingsChanged = false;
-      if (parsedSettings.openrouter_model === 'qwen/qwen-2.5-72b-instruct:free' || parsedSettings.openrouter_model === 'qwen/qwen-2.5-72b-instruct') {
+      const brokenModels = ['qwen/qwen-2.5-72b-instruct:free', 'qwen/qwen-2.5-72b-instruct', 'mistralai/mistral-7b-instruct:free'];
+      if (brokenModels.includes(parsedSettings.openrouter_model)) {
         parsedSettings.openrouter_model = 'google/gemini-2.5-flash:free';
         settingsChanged = true;
       }
-      if (parsedSettings.openrouter_coder_model === 'qwen/qwen-2.5-coder-32b-instruct:free' || parsedSettings.openrouter_coder_model === 'qwen/qwen-2.5-coder-32b-instruct') {
+      const brokenCoderModels = ['qwen/qwen-2.5-coder-32b-instruct:free', 'qwen/qwen-2.5-coder-32b-instruct'];
+      if (brokenCoderModels.includes(parsedSettings.openrouter_coder_model)) {
         parsedSettings.openrouter_coder_model = 'google/gemini-2.5-flash:free';
         settingsChanged = true;
       }
@@ -1069,28 +1071,31 @@ Usa l'italiano e sii conciso ed efficace.`;
             </div>
             <div>
               <label className="block text-xxs font-semibold uppercase text-slate-400 tracking-wider mb-1">Verificatore (OpenRouter)</label>
-              <select
+              <input
+                list="openrouter-models"
                 value={settings.openrouter_model}
                 onChange={(e) => handleSaveSettings({ ...settings, openrouter_model: e.target.value })}
                 className="w-full premium-input text-xs px-3 py-2"
-              >
-                <option value="qwen/qwen-2.5-72b-instruct">qwen/qwen-2.5-72b-instruct</option>
-                <option value="qwen/qwen-2.5-72b-instruct:free">qwen/qwen-2.5-72b-instruct:free</option>
-                <option value="mistralai/mistral-7b-instruct:free">mistralai/mistral-7b-instruct:free</option>
-                <option value="deepseek/deepseek-r1:free">deepseek/deepseek-r1:free</option>
-              </select>
+                placeholder="es. google/gemini-2.5-flash:free"
+              />
             </div>
             <div>
               <label className="block text-xxs font-semibold uppercase text-slate-400 tracking-wider mb-1">Programmatore (OpenRouter)</label>
-              <select
+              <input
+                list="openrouter-models"
                 value={settings.openrouter_coder_model}
                 onChange={(e) => handleSaveSettings({ ...settings, openrouter_coder_model: e.target.value })}
                 className="w-full premium-input text-xs px-3 py-2"
-              >
-                <option value="qwen/qwen-2.5-coder-32b-instruct:free">qwen/qwen-2.5-coder-32b-instruct:free</option>
-                <option value="meta-llama/llama-3.1-8b-instruct:free">meta-llama/llama-3.1-8b-instruct:free</option>
-              </select>
+                placeholder="es. qwen/qwen-2.5-coder-32b-instruct:free"
+              />
             </div>
+            <datalist id="openrouter-models">
+              <option value="google/gemini-2.5-flash:free" />
+              <option value="qwen/qwen-2.5-coder-32b-instruct:free" />
+              <option value="meta-llama/llama-3.1-8b-instruct:free" />
+              <option value="deepseek/deepseek-r1:free" />
+              <option value="mistralai/mistral-small-24b-instruct-2501:free" />
+            </datalist>
           </div>
 
           {/* Configuration options (Toggles) */}
