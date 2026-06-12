@@ -249,7 +249,23 @@ export default function App() {
   const loadAppConfig = async () => {
     try {
       const settingsStr = await invoke<string>('get_settings');
-      const parsedSettings = JSON.parse(settingsStr);
+      let parsedSettings = JSON.parse(settingsStr);
+      
+      // Auto-migrate broken models
+      let settingsChanged = false;
+      if (parsedSettings.openrouter_model === 'qwen/qwen-2.5-72b-instruct:free' || parsedSettings.openrouter_model === 'qwen/qwen-2.5-72b-instruct') {
+        parsedSettings.openrouter_model = 'google/gemini-2.5-flash:free';
+        settingsChanged = true;
+      }
+      if (parsedSettings.openrouter_coder_model === 'qwen/qwen-2.5-coder-32b-instruct:free' || parsedSettings.openrouter_coder_model === 'qwen/qwen-2.5-coder-32b-instruct') {
+        parsedSettings.openrouter_coder_model = 'google/gemini-2.5-flash:free';
+        settingsChanged = true;
+      }
+      
+      if (settingsChanged) {
+        await invoke('save_settings', { settingsJson: JSON.stringify(parsedSettings, null, 2) });
+      }
+
       setSettings(parsedSettings);
       addLog("Impostazioni caricate correttamente.");
 

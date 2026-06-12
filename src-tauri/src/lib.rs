@@ -58,9 +58,9 @@ fn ensure_dirs_and_defaults() -> Result<(), String> {
   "groq_api_key": "",
   "openrouter_api_key": "",
   "groq_model": "llama-3.3-70b-versatile",
-  "openrouter_model": "qwen/qwen-2.5-72b-instruct:free",
+  "openrouter_model": "google/gemini-2.5-flash:free",
   "coder_enabled": true,
-  "openrouter_coder_model": "qwen/qwen-2.5-coder-32b-instruct:free",
+  "openrouter_coder_model": "google/gemini-2.5-flash:free",
   "tts_enabled": true,
   "tts_voice": "auto-italian",
   "tts_rate": 1.05,
@@ -517,15 +517,21 @@ fn generate_piper_speech(app: tauri::AppHandle, text: String) -> Result<Vec<u8>,
     use std::io::Write;
     use std::process::{Command, Stdio};
 
-    let mut child = Command::new(&piper_exe)
-        .current_dir(&piper_dir)
+    let mut command = Command::new(&piper_exe);
+    command.current_dir(&piper_dir)
         .arg("--model")
         .arg(&model_path)
         .arg("--output_file")
         .arg(&out_file)
-        .stdin(Stdio::piped())
-        .spawn()
-        .map_err(|e| e.to_string())?;
+        .stdin(Stdio::piped());
+
+    #[cfg(target_os = "windows")]
+    {
+        use std::os::windows::process::CommandExt;
+        command.creation_flags(0x08000000);
+    }
+
+    let mut child = command.spawn().map_err(|e| e.to_string())?;
 
     if let Some(mut stdin) = child.stdin.take() {
         stdin.write_all(text.as_bytes()).map_err(|e| e.to_string())?;
