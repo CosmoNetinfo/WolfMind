@@ -14,6 +14,7 @@ interface AppSettings {
   openrouter_coder_model: string;
   tts_enabled: boolean;
   tts_voice: string;
+  tts_engine: 'system' | 'piper';
   tts_rate: number;
   verifier_enabled: boolean;
   active_mode: 'chat' | 'articolo' | 'brief';
@@ -54,6 +55,7 @@ export default function App() {
     openrouter_coder_model: 'qwen/qwen-2.5-coder-32b-instruct:free',
     tts_enabled: true,
     tts_voice: 'auto-italian',
+    tts_engine: 'piper',
     tts_rate: 1.05,
     verifier_enabled: true,
     active_mode: 'chat',
@@ -80,10 +82,6 @@ export default function App() {
 
   // Ollama specific state
   const [ollamaModels, setOllamaModels] = useState<{name: string, size: number}[]>([]);
-  const [ollamaDownloadName, setOllamaDownloadName] = useState('');
-  const [isDownloadingOllama, setIsDownloadingOllama] = useState(false);
-  const [ollamaDownloadProgress, setOllamaDownloadProgress] = useState<{status: string, percent: number} | null>(null);
-
   // Local Engine (GGUF) state
   const [localModels, setLocalModels] = useState<string[]>([]);
   const [selectedLocalModel, setSelectedLocalModel] = useState('');
@@ -112,64 +110,7 @@ export default function App() {
     fetchOllamaModels();
   }, [settings.ollama_enabled, settings.ollama_url]);
 
-  const handleDownloadOllamaModel = async () => {
-    if (!ollamaDownloadName.trim() || isDownloadingOllama) return;
-    
-    setIsDownloadingOllama(true);
-    setOllamaDownloadProgress({ status: 'Avvio download...', percent: 0 });
-    
-    try {
-      const response = await fetch(`${settings.ollama_url.replace(/\/$/, '')}/api/pull`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: ollamaDownloadName.trim() })
-      });
-      
-      if (!response.body) throw new Error("ReadableStream not supported in response.");
 
-      const reader = response.body.getReader();
-      const decoder = new TextDecoder('utf-8');
-      
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        
-        const chunk = decoder.decode(value, { stream: true });
-        const lines = chunk.split('\n').filter(l => l.trim() !== '');
-        
-        for (const line of lines) {
-          try {
-            const data = JSON.parse(line);
-            if (data.error) throw new Error(data.error);
-            
-            let percent = 0;
-            if (data.total && data.completed) {
-              percent = Math.round((data.completed / data.total) * 100);
-            }
-            
-            setOllamaDownloadProgress({
-              status: data.status,
-              percent
-            });
-            
-            if (data.status === 'success') {
-              showToast(`Modello ${ollamaDownloadName} scaricato con successo!`, 'success');
-              fetchOllamaModels();
-              setOllamaDownloadName('');
-            }
-          } catch (e) {
-            // ignore incomplete chunks
-          }
-        }
-      }
-    } catch (e: any) {
-      addLog(`Errore download Ollama: ${e.message}`);
-      showToast(`Errore download: ${e.message}`, 'error');
-    } finally {
-      setIsDownloadingOllama(false);
-      setTimeout(() => setOllamaDownloadProgress(null), 3000);
-    }
-  };
 
   const refreshLocalModels = async () => {
     try {
@@ -185,19 +126,7 @@ export default function App() {
 
   useEffect(() => { refreshLocalModels(); }, []);
 
-  const handleImportEngine = async () => {
-    try {
-      const selected = await open({
-        filters: [{ name: 'Eseguibile', extensions: ['exe'] }]
-      });
-      if (selected && !Array.isArray(selected)) {
-        await invoke('import_engine', { sourcePath: selected });
-        showToast('Motore installato con successo!', 'success');
-      }
-    } catch (e: any) {
-      showToast(`Errore installazione motore: ${e}`, 'error');
-    }
-  };
+
 
   const handleImportModel = async () => {
     try {
@@ -433,7 +362,7 @@ export default function App() {
   };
 
   // Speak TTS helper
-  const handleTTS = (text: string) => {
+  const handleTTS = async (text: string) => {
     if (!settings.tts_enabled || !window.speechSynthesis) return;
     window.speechSynthesis.cancel();
 
@@ -447,20 +376,35 @@ export default function App() {
       cleanText = words.slice(0, 300).join(' ') + '... [Nota: Lettura vocale troncata]';
     }
 
-    const utterance = new SpeechSynthesisUtterance(cleanText);
-    utterance.lang = 'it-IT';
-    utterance.rate = settings.tts_rate || 1.0;
-
-    const voices = window.speechSynthesis.getVoices();
-    let selectedVoice = voices.find(v => v.voiceURI === settings.tts_voice || v.name === settings.tts_voice);
-    if (!selectedVoice) {
-      selectedVoice = voices.find(v => v.lang.startsWith('it') || v.name.toLowerCase().includes('italian'));
+    if (settings.tts_engine === 'piper') {
+      try {
+        const audioBase64 = await invoke<number[]>('generate_piper_speech', { text: cleanText });
+        const audioBlob = new Blob([new Uint8Array(audioBase64)], { type: 'audio/wav' });
+        const audioUrl = URL.createObjectURL(audioBlob);
+        const audio = new Audio(audioUrl);
+        audio.playbackRate = settings.tts_rate;
+        audio.play();
+      } catch (error) {
+        console.error("Piper TTS Error:", error);
+      }
+    } else {
+      const utterance = new SpeechSynthesisUtterance(cleanText);
+      utterance.rate = settings.tts_rate;
+      
+      const voices = window.speechSynthesis.getVoices();
+      let selectedVoice = voices.find(v => v.voiceURI === settings.tts_voice || v.name === settings.tts_voice);
+      
+      if (!selectedVoice && settings.tts_voice === 'auto-italian') {
+        selectedVoice = voices.find(v => v.lang.startsWith('it') && (v.name.includes('Natural') || v.name.includes('Online')));
+        if (!selectedVoice) selectedVoice = voices.find(v => v.lang.startsWith('it'));
+      }
+      
+      if (selectedVoice) {
+        utterance.voice = selectedVoice;
+      }
+      
+      window.speechSynthesis.speak(utterance);
     }
-    if (selectedVoice) {
-      utterance.voice = selectedVoice;
-    }
-
-    window.speechSynthesis.speak(utterance);
   };
 
   // Compile context from KB Markdown files up to token (char) limit
@@ -1024,6 +968,7 @@ Usa l'italiano e sii conciso ed efficace.`;
                     />
                   )}
                 </div>
+              </>
             )}
           </div>
 
@@ -1141,21 +1086,36 @@ Usa l'italiano e sii conciso ed efficace.`;
               />
             </div>
             {settings.tts_enabled && (
-              <div>
-                <label className="block text-xxs font-semibold uppercase text-slate-400 tracking-wider mb-1">Voce TTS</label>
-                <select
-                  value={settings.tts_voice}
-                  onChange={(e) => handleSaveSettings({ ...settings, tts_voice: e.target.value })}
-                  className="w-full premium-input text-xs px-3 py-2"
-                >
-                  <option value="auto-italian">Italiano (Automatico)</option>
-                  {availableVoices.map((v) => (
-                    <option key={v.voiceURI} value={v.voiceURI}>
-                      {v.name} ({v.lang})
-                    </option>
-                  ))}
-                </select>
-              </div>
+              <>
+                <div className="pt-2">
+                  <label className="block text-xxs font-semibold uppercase text-slate-400 tracking-wider mb-1">Motore TTS</label>
+                  <select
+                    value={settings.tts_engine || 'system'}
+                    onChange={(e) => handleSaveSettings({ ...settings, tts_engine: e.target.value as 'system' | 'piper' })}
+                    className="w-full premium-input text-xs px-3 py-2"
+                  >
+                    <option value="piper">Piper (Neurale Offline - Consigliato)</option>
+                    <option value="system">Voce di Sistema (Windows)</option>
+                  </select>
+                </div>
+                {settings.tts_engine !== 'piper' && (
+                  <div className="pt-2">
+                    <label className="block text-xxs font-semibold uppercase text-slate-400 tracking-wider mb-1">Voce di Sistema</label>
+                    <select
+                      value={settings.tts_voice}
+                      onChange={(e) => handleSaveSettings({ ...settings, tts_voice: e.target.value })}
+                      className="w-full premium-input text-xs px-3 py-2"
+                    >
+                      <option value="auto-italian">Italiano (Automatico)</option>
+                      {availableVoices.map((v) => (
+                        <option key={v.voiceURI} value={v.voiceURI}>
+                          {v.name} ({v.lang})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+              </>
             )}
           </div>
 

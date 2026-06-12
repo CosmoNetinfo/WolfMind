@@ -502,6 +502,46 @@ fn import_model(source_path: String) -> Result<(), String> {
     Ok(())
 }
 
+#[tauri::command]
+fn generate_piper_speech(text: String) -> Result<Vec<u8>, String> {
+    let base = get_base_dir();
+    let piper_dir = base.join("engine").join("piper");
+    let piper_exe = piper_dir.join("piper.exe");
+    let model_path = piper_dir.join("it_IT-paola-medium.onnx");
+    let out_file = piper_dir.join("out.wav");
+
+    if !piper_exe.exists() || !model_path.exists() {
+        return Err("Motore Piper TTS non trovato.".to_string());
+    }
+
+    use std::io::Write;
+    use std::process::{Command, Stdio};
+
+    let mut child = Command::new(&piper_exe)
+        .current_dir(&piper_dir)
+        .arg("--model")
+        .arg(&model_path)
+        .arg("--output_file")
+        .arg(&out_file)
+        .stdin(Stdio::piped())
+        .spawn()
+        .map_err(|e| e.to_string())?;
+
+    if let Some(mut stdin) = child.stdin.take() {
+        stdin.write_all(text.as_bytes()).map_err(|e| e.to_string())?;
+    }
+
+    let output = child.wait_with_output().map_err(|e| e.to_string())?;
+    
+    if output.status.success() {
+        let audio_bytes = fs::read(&out_file).map_err(|e| e.to_string())?;
+        let _ = fs::remove_file(&out_file);
+        Ok(audio_bytes)
+    } else {
+        Err(String::from_utf8_lossy(&output.stderr).to_string())
+    }
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let _ = ensure_dirs_and_defaults();
@@ -531,7 +571,8 @@ pub fn run() {
             stop_local_engine,
             get_local_models,
             import_engine,
-            import_model
+            import_model,
+            generate_piper_speech
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
