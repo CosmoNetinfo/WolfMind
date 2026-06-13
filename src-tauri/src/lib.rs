@@ -444,6 +444,13 @@ fn start_local_engine(model_name: String, state: State<'_, EngineState>, app: ta
         let _ = child.kill();
     }
 
+    #[cfg(target_os = "windows")]
+    {
+        let _ = std::process::Command::new("taskkill")
+            .args(["/F", "/IM", "llama-server.exe"])
+            .output();
+    }
+
     let resource_dir = app.path().resource_dir().map_err(|e| e.to_string())?;
     let server_exe = resource_dir.join("llama").join("llama-server.exe");
 
@@ -609,6 +616,20 @@ pub fn run() {
             generate_piper_speech,
             search_web_duckduckgo
         ])
-        .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        .build(tauri::generate_context!())
+        .expect("error while building tauri application")
+        .run(|_app_handle, event| match event {
+            tauri::RunEvent::ExitRequested { .. } | tauri::RunEvent::Exit => {
+                #[cfg(target_os = "windows")]
+                {
+                    let _ = std::process::Command::new("taskkill")
+                        .args(["/F", "/IM", "llama-server.exe"])
+                        .output();
+                    let _ = std::process::Command::new("taskkill")
+                        .args(["/F", "/IM", "piper.exe"])
+                        .output();
+                }
+            }
+            _ => {}
+        });
 }
