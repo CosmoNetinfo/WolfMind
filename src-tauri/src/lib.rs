@@ -546,6 +546,36 @@ fn generate_piper_speech(app: tauri::AppHandle, text: String) -> Result<Vec<u8>,
     }
 }
 
+#[tauri::command]
+fn search_web_duckduckgo(query: String) -> Result<String, String> {
+    let url = format!("https://html.duckduckgo.com/html/?q={}", urlencoding::encode(&query));
+    let client = reqwest::blocking::Client::builder()
+        .user_agent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
+        .build()
+        .map_err(|e| e.to_string())?;
+
+    let res = client.get(&url).send().map_err(|e| e.to_string())?;
+    let body = res.text().map_err(|e| e.to_string())?;
+
+    let document = scraper::Html::parse_document(&body);
+    let result_selector = scraper::Selector::parse(".result__snippet").unwrap();
+
+    let mut results = Vec::new();
+    for (i, element) in document.select(&result_selector).enumerate() {
+        if i >= 5 {
+            break;
+        }
+        let text = element.text().collect::<Vec<_>>().join(" ");
+        results.push(format!("- {}", text.trim()));
+    }
+
+    if results.is_empty() {
+        return Ok("Nessun risultato trovato sulla rete per questa query.".to_string());
+    }
+
+    Ok(results.join("\n"))
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let _ = ensure_dirs_and_defaults();
@@ -576,7 +606,8 @@ pub fn run() {
             get_local_models,
             import_engine,
             import_model,
-            generate_piper_speech
+            generate_piper_speech,
+            search_web_duckduckgo
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

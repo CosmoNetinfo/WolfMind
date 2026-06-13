@@ -9,8 +9,11 @@
   "tts_voice": "auto-italian",
   "tts_rate": 1.05,
   "verifier_enabled": true,
-  "active_mode": "brief",
+  "active_mode": "chat",
   "kb_max_tokens": 8000,
   "auto_save_session": true,
-  "language": "it"
+  "language": "it",
+  "local_generator_model": "gemma-4-12b-it-qat-q4_0.gguf",
+  "tts_engine": "piper",
+  "ollama_url": "http://localhost:11434"
 }

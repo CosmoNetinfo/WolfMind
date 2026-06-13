@@ -48,7 +48,7 @@ export async function sendMessageToLocalGenerator(
     return data.choices[0]?.message?.content || '';
   } catch (error: any) {
     console.error("Local Generator error:", error);
-    throw new Error("Impossibile connettersi al server locale. Assicurati che il Motore sia avviato o che Ollama sia acceso.");
+    throw new Error("Il Motore Locale non è in esecuzione. Assicurati di aver avviato l'AI prima di scrivere.");
   }
 }
 

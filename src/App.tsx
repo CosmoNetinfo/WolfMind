@@ -12,6 +12,7 @@ interface AppSettings {
   local_coder_model: string;
   coder_enabled: boolean;
   tts_enabled: boolean;
+  web_search_enabled: boolean;
   tts_voice: string;
   tts_engine: 'system' | 'piper';
   tts_rate: number;
@@ -49,6 +50,7 @@ export default function App() {
     local_coder_model: '',
     coder_enabled: true,
     tts_enabled: true,
+    web_search_enabled: false,
     tts_voice: 'auto-italian',
     tts_engine: 'piper',
     tts_rate: 1.05,
@@ -106,19 +108,20 @@ export default function App() {
 
 
 
-  const refreshLocalModels = async () => {
+  const refreshLocalModels = async (currentSettings?: AppSettings) => {
     try {
       const models = await invoke<string[]>('get_local_models');
       setLocalModels(models);
-      if (models.length > 0 && (settings.local_generator_model === '' || !settings.local_generator_model)) {
-        handleSaveSettings({ ...settings, local_generator_model: models[0], local_verifier_model: models[0], local_coder_model: models[0] });
+      const s = currentSettings || settings;
+      if (models.length > 0 && (s.local_generator_model === '' || !s.local_generator_model)) {
+        handleSaveSettings({ ...s, local_generator_model: models[0], local_verifier_model: models[0], local_coder_model: models[0] });
       }
     } catch (e) {
       addLog(`Errore recupero modelli GGUF: ${e}`);
     }
   };
 
-  useEffect(() => { refreshLocalModels(); }, []);
+
 
 
 
@@ -231,10 +234,14 @@ export default function App() {
 
   // Load Settings and KB on mount
   useEffect(() => {
-    loadAppConfig();
-    setupSpeechRecognition();
-    checkUpdates(false);
-    getVersion().then(v => setAppVersion(v)).catch(() => {});
+    const init = async () => {
+      const s = await loadAppConfig();
+      await refreshLocalModels(s || undefined);
+      setupSpeechRecognition();
+      checkUpdates(false);
+      getVersion().then(v => setAppVersion(v)).catch(() => {});
+    };
+    init();
   }, []);
 
   // Scroll to bottom of chat when messages change
@@ -242,7 +249,7 @@ export default function App() {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  const loadAppConfig = async () => {
+  const loadAppConfig = async (): Promise<AppSettings | null> => {
     try {
       const settingsStr = await invoke<string>('get_settings');
       let parsedSettings = JSON.parse(settingsStr);
@@ -261,8 +268,10 @@ export default function App() {
 
       const sess = await invoke<string[]>('get_sessions');
       setSessions(sess);
+      return parsedSettings;
     } catch (e) {
       addLog(`Errore nel caricamento delle configurazioni: ${e}`);
+      return null;
     }
   };
 
@@ -583,7 +592,19 @@ export default function App() {
       kbContext = compileKBContext();
     }
 
-    const compiledSystemPrompt = `${activeProfilePrompt}\n\nCONTESTO KNOWLEDGE BASE DI RIFERIMENTO:\n${kbContext}`;
+    let webContext = '';
+    if (settings.web_search_enabled) {
+      try {
+        setStatusText('Ricerca sul web...');
+        const searchResults = await invoke<string>('search_web_duckduckgo', { query: finalUserQuery });
+        webContext = `\n\nRISULTATI RICERCA WEB:\n${searchResults}`;
+        addLog("Web Search: Trovati risultati dalla rete.");
+      } catch (e) {
+        addLog(`Errore Web Search: ${e}`);
+      }
+    }
+
+    const compiledSystemPrompt = `${activeProfilePrompt}\n\nCONTESTO KNOWLEDGE BASE DI RIFERIMENTO:\n${kbContext}${webContext}`;
 
     const history: ChatMessage[] = messages.map(m => {
       let content: any = m.content;
@@ -956,6 +977,27 @@ Usa l'italiano e sii conciso ed efficace.`;
                   )}
                 </div>
               </div>
+            </div>
+
+            {/* Web Search */}
+            <div className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-200/50">
+              <div className="flex items-center gap-2">
+                <span className="text-emerald-500">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                  </svg>
+                </span>
+                <label className="text-xs font-bold text-slate-700">Ricerca Web (Internet)</label>
+              </div>
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  className="sr-only peer"
+                  checked={settings.web_search_enabled}
+                  onChange={(e) => handleSaveSettings({ ...settings, web_search_enabled: e.target.checked })}
+                />
+                <div className="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-emerald-500"></div>
+              </label>
             </div>
 
             {/* AI Models configuration */}
