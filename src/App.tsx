@@ -124,7 +124,7 @@ export default function App() {
         try {
           await invoke('start_local_engine', { modelName: targetModel });
           setEngineRunning(true);
-          addLog(`Motore GGUF avviato automaticamente con ${targetModel}.`);
+          addLog(`Motore GGUF avviato con ${targetModel}. Attendere 10-30s per il caricamento in memoria...`);
         } catch (err: any) {
           addLog(`Errore avvio automatico motore: ${err}`);
         }
@@ -161,6 +161,7 @@ export default function App() {
       await invoke('start_local_engine', { modelName: settings.local_generator_model });
       setEngineRunning(true);
       showToast('Motore avviato!', 'success');
+      addLog(`Motore GGUF avviato. Attendere 10-30s per il caricamento in memoria...`);
       // Forziamo l'uso del motore locale come "Ollama" sulle API
       handleSaveSettings({ ...settings, ollama_url: 'http://localhost:11434' });
     } catch (e: any) {
@@ -993,24 +994,19 @@ Usa l'italiano e sii conciso ed efficace.`;
             </div>
 
             {/* Web Search */}
-            <div className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-200/50">
-              <div className="flex items-center gap-2">
+            <div className="flex items-center justify-between bg-white/5 p-3 rounded-xl border border-slate-200 shadow-sm mt-6 mb-2">
+              <span className="text-sm font-semibold text-slate-700 flex items-center gap-2">
                 <span className="text-emerald-500">
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                  </svg>
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
                 </span>
-                <label className="text-xs font-bold text-slate-700">Ricerca Web (Internet)</label>
-              </div>
-              <label className="relative inline-flex items-center cursor-pointer">
-                <input
-                  type="checkbox"
-                  className="sr-only peer"
-                  checked={!!settings.web_search_enabled}
-                  onChange={(e) => handleSaveSettings({ ...settings, web_search_enabled: e.target.checked })}
-                />
-                <div className="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-emerald-500"></div>
-              </label>
+                Ricerca Web (Internet)
+              </span>
+              <input
+                type="checkbox"
+                checked={!!settings.web_search_enabled}
+                onChange={(e) => handleSaveSettings({ ...settings, web_search_enabled: e.target.checked })}
+                className="w-5 h-5 rounded border-slate-300 text-emerald-500 focus:ring-emerald-500 bg-white"
+              />
             </div>
 
             {/* AI Models configuration */}
