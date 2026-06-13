@@ -181,8 +181,9 @@ WolfMind integra funzionalità all'avanguardia per la privacy, l'automazione e l
    - Committing automatico in background della cartella `/cervello/` su repository remoto, garantendo un backup invisibile ma costante.
 6. **Modulo Auto-Updater (Tauri v2)**:
    - Aggiornamenti automatici (Over-The-Air) gestiti internamente.
-
-
-
-
-
+7. **Console di Debug Avanzata a Schermo Intero**:
+   - Pannello dedicato attivabile tramite l'icona "bug" (🐞) nella barra superiore.
+   - Tracciamento in tempo reale, suddiviso per categorie cromatiche (`SYSTEM`, `ERROR`, `API`, `USER`), di ogni evento, con latenze misurate in millisecondi, utile per il debug offline e l'analisi dei log.
+8. **Pipeline Multi-Agente 100% Locale**:
+   - Oltre alle API Cloud, l'app ora supporta un'esecuzione locale completa della complessa pipeline multi-modello.
+   - Permette di selezionare dinamicamente dai dropdown laterali quale modello locale o Ollama impiegare rispettivamente per il ruolo di **Generatore**, **Programmatore** e **Verificatore**.
