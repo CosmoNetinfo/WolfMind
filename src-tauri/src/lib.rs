@@ -444,8 +444,10 @@ fn start_local_engine(model_name: String, state: State<'_, EngineState>, app: ta
         let _ = child.kill();
     }
 
-    let sidecar_command = app.shell().sidecar("llama-server")
-        .map_err(|e| e.to_string())?
+    let resource_dir = app.path().resource_dir().map_err(|e| e.to_string())?;
+    let server_exe = resource_dir.join("llama").join("llama-server.exe");
+
+    let sidecar_command = app.shell().command(server_exe.to_string_lossy().to_string())
         .args(["-m", model_path.to_str().unwrap(), "--port", "11434"]);
         
     let (_rx, child) = sidecar_command.spawn().map_err(|e| e.to_string())?;

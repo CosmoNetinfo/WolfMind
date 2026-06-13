@@ -44,9 +44,9 @@ interface MessageUI {
 export default function App() {
   // Settings state
   const [settings, setSettings] = useState<AppSettings>({
-    local_generator_model: 'llama3',
-    local_verifier_model: 'llama3',
-    local_coder_model: 'llama3',
+    local_generator_model: '',
+    local_verifier_model: '',
+    local_coder_model: '',
     coder_enabled: true,
     tts_enabled: true,
     tts_voice: 'auto-italian',
@@ -79,7 +79,6 @@ export default function App() {
   const [ollamaModels, setOllamaModels] = useState<{name: string, size: number}[]>([]);
   // Local Engine (GGUF) state
   const [localModels, setLocalModels] = useState<string[]>([]);
-  const [selectedLocalModel, setSelectedLocalModel] = useState('');
   const [engineRunning, setEngineRunning] = useState(false);
 
   const showToast = (message: string, type: 'success' | 'error' | 'info' = 'info') => {
@@ -111,8 +110,8 @@ export default function App() {
     try {
       const models = await invoke<string[]>('get_local_models');
       setLocalModels(models);
-      if (models.length > 0 && !selectedLocalModel) {
-        setSelectedLocalModel(models[0]);
+      if (models.length > 0 && (settings.local_generator_model === '' || !settings.local_generator_model)) {
+        handleSaveSettings({ ...settings, local_generator_model: models[0], local_verifier_model: models[0], local_coder_model: models[0] });
       }
     } catch (e) {
       addLog(`Errore recupero modelli GGUF: ${e}`);
@@ -140,10 +139,10 @@ export default function App() {
   };
 
   const handleStartEngine = async () => {
-    if (!selectedLocalModel) return;
+    if (!settings.local_generator_model) return;
     try {
       showToast('Avvio motore in corso...', 'info');
-      await invoke('start_local_engine', { modelName: selectedLocalModel });
+      await invoke('start_local_engine', { modelName: settings.local_generator_model });
       setEngineRunning(true);
       showToast('Motore avviato!', 'success');
       // Forziamo l'uso del motore locale come "Ollama" sulle API
@@ -942,16 +941,7 @@ Usa l'italiano e sii conciso ed efficace.`;
                     <div className="space-y-4">
             {/* Integrated Engine Configuration */}
             <div className="space-y-4">
-              <div className="pt-2 border-b border-slate-200 pb-4">
-                <label className="block text-xxs font-semibold uppercase text-slate-400 tracking-wider mb-1">Ollama Esterno (Opzionale)</label>
-                <input
-                  type="text"
-                  value={settings.ollama_url}
-                  onChange={(e) => handleSaveSettings({ ...settings, ollama_url: e.target.value })}
-                  placeholder="http://localhost:11434"
-                  className="w-full premium-input text-xs px-4 py-2 mb-2"
-                />
-              </div>
+
 
               <div className="space-y-2 bg-slate-50 p-3 rounded-xl border border-slate-200/50">
                 <div className="pt-2 flex gap-2">
@@ -977,7 +967,7 @@ Usa l'italiano e sii conciso ed efficace.`;
                   onChange={(e) => handleSaveSettings({ ...settings, local_generator_model: e.target.value })}
                   className="w-full premium-input text-xs px-3 py-2 truncate"
                 >
-                  {localModels.length === 0 && ollamaModels.length === 0 && <option value="llama3">llama3</option>}
+                  {localModels.length === 0 && ollamaModels.length === 0 && <option value="">Nessun modello</option>}
                   {[...new Set([...localModels, ...ollamaModels.map(m => m.name)])].map(m => (
                     <option key={`gen-${m}`} value={m}>{m}</option>
                   ))}
@@ -990,7 +980,7 @@ Usa l'italiano e sii conciso ed efficace.`;
                   onChange={(e) => handleSaveSettings({ ...settings, local_verifier_model: e.target.value })}
                   className="w-full premium-input text-xs px-3 py-2 truncate"
                 >
-                  {localModels.length === 0 && ollamaModels.length === 0 && <option value="llama3">llama3</option>}
+                  {localModels.length === 0 && ollamaModels.length === 0 && <option value="">Nessun modello</option>}
                   {[...new Set([...localModels, ...ollamaModels.map(m => m.name)])].map(m => (
                     <option key={`ver-${m}`} value={m}>{m}</option>
                   ))}
@@ -1003,7 +993,7 @@ Usa l'italiano e sii conciso ed efficace.`;
                   onChange={(e) => handleSaveSettings({ ...settings, local_coder_model: e.target.value })}
                   className="w-full premium-input text-xs px-3 py-2 truncate"
                 >
-                  {localModels.length === 0 && ollamaModels.length === 0 && <option value="llama3">llama3</option>}
+                  {localModels.length === 0 && ollamaModels.length === 0 && <option value="">Nessun modello</option>}
                   {[...new Set([...localModels, ...ollamaModels.map(m => m.name)])].map(m => (
                     <option key={`cod-${m}`} value={m}>{m}</option>
                   ))}
