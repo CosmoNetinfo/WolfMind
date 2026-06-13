@@ -96,7 +96,7 @@ export default function App() {
         setOllamaModels(data.models || []);
       }
     } catch (e) {
-      addLog(`Impossibile recuperare i modelli da Ollama.`);
+      addLog(`Impossibile recuperare i modelli da Ollama.`, 'ERROR');
       setOllamaModels([]);
     }
   };
@@ -668,7 +668,7 @@ export default function App() {
 
       setStatusText('Pronto');
     } catch (error: any) {
-      addLog(`Errore pipeline: ${error.message}`);
+      addLog(`Errore pipeline: ${error.message}`, 'ERROR');
       setMessages(prev => prev.map(m => m.id === assistantMsgId ? { 
         ...m, 
         content: `Errore nella generazione: ${error.message}`, 
