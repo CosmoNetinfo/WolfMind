@@ -113,8 +113,21 @@ export default function App() {
       const models = await invoke<string[]>('get_local_models');
       setLocalModels(models);
       const s = currentSettings || settings;
-      if (models.length > 0 && (s.local_generator_model === '' || !s.local_generator_model)) {
-        handleSaveSettings({ ...s, local_generator_model: models[0], local_verifier_model: models[0], local_coder_model: models[0] });
+      let targetModel = s.local_generator_model;
+      if (models.length > 0 && (!targetModel)) {
+        targetModel = models[0];
+        handleSaveSettings({ ...s, local_generator_model: targetModel, local_verifier_model: targetModel, local_coder_model: targetModel });
+      }
+      
+      // Auto-start engine
+      if (targetModel) {
+        try {
+          await invoke('start_local_engine', { modelName: targetModel });
+          setEngineRunning(true);
+          addLog(`Motore GGUF avviato automaticamente con ${targetModel}.`);
+        } catch (err: any) {
+          addLog(`Errore avvio automatico motore: ${err}`);
+        }
       }
     } catch (e) {
       addLog(`Errore recupero modelli GGUF: ${e}`);
@@ -993,7 +1006,7 @@ Usa l'italiano e sii conciso ed efficace.`;
                 <input
                   type="checkbox"
                   className="sr-only peer"
-                  checked={settings.web_search_enabled}
+                  checked={!!settings.web_search_enabled}
                   onChange={(e) => handleSaveSettings({ ...settings, web_search_enabled: e.target.checked })}
                 />
                 <div className="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-emerald-500"></div>

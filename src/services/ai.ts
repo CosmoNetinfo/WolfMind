@@ -48,7 +48,7 @@ export async function sendMessageToLocalGenerator(
     return data.choices[0]?.message?.content || '';
   } catch (error: any) {
     console.error("Local Generator error:", error);
-    throw new Error("Il Motore Locale non è in esecuzione. Assicurati di aver avviato l'AI prima di scrivere.");
+    throw new Error("Il Motore Locale non sta rispondendo. Se l'hai appena avviato, potrebbe stare caricando il modello (richiede fino a 30 secondi per modelli grandi).");
   }
 }
 
