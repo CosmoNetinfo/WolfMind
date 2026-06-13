@@ -4,15 +4,13 @@ import { getVersion } from '@tauri-apps/api/app';
 import { open } from '@tauri-apps/plugin-dialog';
 import { readFile } from '@tauri-apps/plugin-fs';
 import CervelloTab from './components/CervelloTab';
-import { sendMessageToGroq, verifyResponseWithOpenRouter, refineCodeWithCoderAgent, ChatMessage, VerificationResult } from './services/ai';
+import { sendMessageToLocalGenerator, verifyResponseWithLocalVerifier, refineCodeWithLocalCoder, ChatMessage, VerificationResult } from './services/ai';
 
 interface AppSettings {
-  groq_api_key: string;
-  openrouter_api_key: string;
-  groq_model: string;
-  openrouter_model: string;
+  local_generator_model: string;
+  local_verifier_model: string;
+  local_coder_model: string;
   coder_enabled: boolean;
-  openrouter_coder_model: string;
   tts_enabled: boolean;
   tts_voice: string;
   tts_engine: 'system' | 'piper';
@@ -22,9 +20,7 @@ interface AppSettings {
   kb_max_tokens: number;
   auto_save_session: boolean;
   language: string;
-  ollama_enabled: boolean;
   ollama_url: string;
-  ollama_model: string;
   continuous_listening: boolean;
   rag_enabled: boolean;
 }
@@ -48,12 +44,10 @@ interface MessageUI {
 export default function App() {
   // Settings state
   const [settings, setSettings] = useState<AppSettings>({
-    groq_api_key: '',
-    openrouter_api_key: '',
-    groq_model: 'llama-3.3-70b-versatile',
-    openrouter_model: 'qwen/qwen-2.5-72b-instruct',
+    local_generator_model: 'llama3',
+    local_verifier_model: 'llama3',
+    local_coder_model: 'llama3',
     coder_enabled: true,
-    openrouter_coder_model: 'qwen/qwen-2.5-coder-32b-instruct:free',
     tts_enabled: true,
     tts_voice: 'auto-italian',
     tts_engine: 'piper',
@@ -63,21 +57,20 @@ export default function App() {
     kb_max_tokens: 8000,
     auto_save_session: true,
     language: 'it',
-    ollama_enabled: false,
     ollama_url: 'http://localhost:11434',
-    ollama_model: 'llama3',
     continuous_listening: false,
     rag_enabled: true
   });
 
   // UI state
+  const [currentView, setCurrentView] = useState<'chat' | 'debug'>('chat');
   const [activeTab, setActiveTab] = useState<'chat' | 'cervello' | 'sessioni'>('chat');
   const [messages, setMessages] = useState<MessageUI[]>([]);
   const [inputText, setInputText] = useState('');
   const [attachments, setAttachments] = useState<AttachmentUI[]>([]);
   const [statusText, setStatusText] = useState('Pronto');
   const [isListening, setIsListening] = useState(false);
-  const [logs, setLogs] = useState<string[]>([]);
+  const [logs, setLogs] = useState<{ id: string; timestamp: string; category: 'SYSTEM' | 'API' | 'ERROR' | 'USER'; message: string }[]>([]);
   const [showSettingsPanel, setShowSettingsPanel] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
   const [appVersion, setAppVersion] = useState<string>('');
@@ -95,7 +88,7 @@ export default function App() {
   };
 
   const fetchOllamaModels = async () => {
-    if (!settings.ollama_enabled) return;
+    
     try {
       const res = await fetch(`${settings.ollama_url.replace(/\/$/, '')}/api/tags`);
       if (res.ok) {
@@ -110,7 +103,7 @@ export default function App() {
 
   useEffect(() => {
     fetchOllamaModels();
-  }, [settings.ollama_enabled, settings.ollama_url]);
+  }, [settings.ollama_url]);
 
 
 
@@ -154,7 +147,7 @@ export default function App() {
       setEngineRunning(true);
       showToast('Motore avviato!', 'success');
       // Forziamo l'uso del motore locale come "Ollama" sulle API
-      handleSaveSettings({ ...settings, ollama_enabled: true, ollama_url: 'http://localhost:11434' });
+      handleSaveSettings({ ...settings, ollama_url: 'http://localhost:11434' });
     } catch (e: any) {
       showToast(`Errore avvio motore: ${e}`, 'error');
     }
@@ -206,10 +199,16 @@ export default function App() {
   }, [settings]);
 
   // Log message helper
-  const addLog = async (msg: string) => {
-    setLogs(prev => [msg, ...prev].slice(0, 100));
+  const addLog = async (msg: string, category: 'SYSTEM' | 'API' | 'ERROR' | 'USER' = 'SYSTEM') => {
+    const newLog = {
+      id: Math.random().toString(36).substring(7),
+      timestamp: new Date().toISOString(),
+      category,
+      message: msg
+    };
+    setLogs(prev => [newLog, ...prev].slice(0, 100));
     try {
-      await invoke('write_app_log', { message: msg });
+      await invoke('write_app_log', { message: `[${category}] ${msg}` });
     } catch (_) {}
   };
 
@@ -217,13 +216,11 @@ export default function App() {
   useEffect(() => {
     const handleError = (e: ErrorEvent) => {
       const errorMsg = `Errore Critico: ${e.message} in ${e.filename}:${e.lineno}`;
-      setLogs(prev => [errorMsg, ...prev].slice(0, 100));
-      invoke('write_app_log', { message: errorMsg }).catch(() => {});
+      addLog(errorMsg, 'ERROR');
     };
     const handleRejection = (e: PromiseRejectionEvent) => {
       const errorMsg = `Promise Fallita: ${e.reason}`;
-      setLogs(prev => [errorMsg, ...prev].slice(0, 100));
-      invoke('write_app_log', { message: errorMsg }).catch(() => {});
+      addLog(errorMsg, 'ERROR');
     };
     window.addEventListener('error', handleError);
     window.addEventListener('unhandledrejection', handleRejection);
@@ -251,22 +248,7 @@ export default function App() {
       const settingsStr = await invoke<string>('get_settings');
       let parsedSettings = JSON.parse(settingsStr);
       
-      // Auto-migrate broken models
-      let settingsChanged = false;
-      const brokenModels = ['qwen/qwen-2.5-72b-instruct:free', 'qwen/qwen-2.5-72b-instruct', 'mistralai/mistral-7b-instruct:free'];
-      if (brokenModels.includes(parsedSettings.openrouter_model)) {
-        parsedSettings.openrouter_model = 'google/gemini-2.5-flash:free';
-        settingsChanged = true;
-      }
-      const brokenCoderModels = ['qwen/qwen-2.5-coder-32b-instruct:free', 'qwen/qwen-2.5-coder-32b-instruct'];
-      if (brokenCoderModels.includes(parsedSettings.openrouter_coder_model)) {
-        parsedSettings.openrouter_coder_model = 'google/gemini-2.5-flash:free';
-        settingsChanged = true;
-      }
       
-      if (settingsChanged) {
-        await invoke('save_settings', { settingsJson: JSON.stringify(parsedSettings, null, 2) });
-      }
 
       setSettings(parsedSettings);
       addLog("Impostazioni caricate correttamente.");
@@ -630,30 +612,27 @@ export default function App() {
     setMessages(prev => [...prev, assistantMsgPlaceholder]);
 
     try {
-      // 1. Generator Agent (Groq / Ollama)
-      let aiResponse = await sendMessageToGroq(
-        settings.groq_api_key,
-        settings.groq_model,
+      // 1. Generator Agent (Local)
+      let aiResponse = await sendMessageToLocalGenerator(
+        settings.local_generator_model,
         compiledSystemPrompt,
         history,
-        settings.ollama_enabled,
-        settings.ollama_url,
-        settings.ollama_model
+        settings.ollama_url
       );
 
       // Read output aloud if TTS enabled (run immediately to avoid delay)
       handleTTS(aiResponse);
 
-      // 1.5 Coder Agent (OpenRouter) - Refines code output if active & detected
-      if (settings.coder_enabled && settings.openrouter_api_key && (aiResponse.includes('```') || settings.active_mode === 'brief')) {
+      // 1.5 Coder Agent (Local) - Refines code output if active & detected
+      if (settings.coder_enabled && (aiResponse.includes('```') || settings.active_mode === 'brief')) {
         setStatusText('Ottimizzazione codice (Programmatore)...');
         try {
-          const refinedResponse = await refineCodeWithCoderAgent(
-            settings.openrouter_api_key,
-            settings.openrouter_coder_model,
+          const refinedResponse = await refineCodeWithLocalCoder(
+            settings.local_coder_model,
             userQuery,
             aiResponse,
-            kbContext
+            kbContext,
+            settings.ollama_url
           );
           aiResponse = refinedResponse;
           addLog(`Codice ottimizzato con successo dall'Agente Programmatore.`);
@@ -665,16 +644,16 @@ export default function App() {
       setMessages(prev => prev.map(m => m.id === assistantMsgId ? { ...m, content: aiResponse, isGenerating: false } : m));
       addLog(`Risposta generata correttamente.`);
 
-      // 2. Verifier Agent (OpenRouter)
-      if (settings.verifier_enabled && settings.openrouter_api_key) {
+      // 2. Verifier Agent (Local)
+      if (settings.verifier_enabled) {
         setStatusText('Verifica risposta...');
-        const verResult = await verifyResponseWithOpenRouter(
-          settings.openrouter_api_key,
-          settings.openrouter_model,
+        const verResult = await verifyResponseWithLocalVerifier(
+          settings.local_verifier_model,
           userQuery,
           aiResponse,
           kbContext,
-          settings.active_mode
+          settings.active_mode,
+          settings.ollama_url
         );
 
         setMessages(prev => prev.map(m => m.id === assistantMsgId ? { ...m, verification: verResult } : m));
@@ -724,14 +703,14 @@ Usa l'italiano e sii conciso ed efficace.`;
       const chatHistoryText = messages.map(m => `[${m.role.toUpperCase()} - ${m.timestamp}]:\n${m.content}\n`).join('\n');
 
       let sessionSummary = '';
-      if (settings.groq_api_key) {
-        sessionSummary = await sendMessageToGroq(
-          settings.groq_api_key,
-          settings.groq_model,
+      try {
+        sessionSummary = await sendMessageToLocalGenerator(
+          settings.local_generator_model,
           summaryPrompt,
-          [{ role: 'user', content: `Ecco i messaggi della sessione:\n\n${chatHistoryText}` }]
+          [{ role: 'user', content: `Ecco i messaggi della sessione:\n\n${chatHistoryText}` }],
+          settings.ollama_url
         );
-      } else {
+      } catch (err) {
         sessionSummary = `# Sessione Log\n\nSalvato in modalità offline senza riassunto AI.\n\n${chatHistoryText}`;
       }
 
@@ -893,6 +872,19 @@ Usa l'italiano e sii conciso ed efficace.`;
             </button>
           ))}
           <button
+            onClick={() => setCurrentView(currentView === 'debug' ? 'chat' : 'debug')}
+            className={`p-2 rounded-xl bg-slate-100 border border-slate-200 hover:border-red-400/60 text-slate-500 hover:text-red-500 transition-all duration-350 ${
+              currentView === 'debug' ? 'border-red-500 text-red-500 bg-red-500/10' : ''
+            }`}
+            title="Debug di Sistema"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 2l-2 2h4l-2-2zM3.5 9.5L5 11l-1.5 1.5M20.5 9.5L19 11l1.5 1.5M7 16h10M9 20h6M12 4v2M5 6l2 2m10-2l-2 2" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 12a5 5 0 01-10 0v-4a5 5 0 0110 0v4z" />
+            </svg>
+          </button>
+
+          <button
             onClick={() => setShowSettingsPanel(!showSettingsPanel)}
             className={`p-2 rounded-xl bg-slate-100 border border-slate-200 hover:border-glowCyan/60 text-slate-500 hover:text-glowCyan transition-all duration-350 ${
               showSettingsPanel ? 'border-glowCyan text-glowCyan bg-glowCyan/10' : ''
@@ -947,155 +939,84 @@ Usa l'italiano e sii conciso ed efficace.`;
             <button onClick={() => setShowSettingsPanel(false)} className="text-slate-500 hover:text-slate-800 text-xs font-semibold transition-colors">Chiudi</button>
           </div>
 
-          {/* API Keys configuration */}
-          <div className="space-y-4">
-            <div>
-              <label className="block text-xxs font-semibold uppercase text-slate-400 tracking-wider mb-1">Groq API Key</label>
-              <input
-                type="password"
-                value={settings.groq_api_key}
-                onChange={(e) => handleSaveSettings({ ...settings, groq_api_key: e.target.value })}
-                placeholder="gsk_..."
-                className="w-full premium-input text-xs px-4 py-2"
-              />
-            </div>
-            <div>
-              <label className="block text-xxs font-semibold uppercase text-slate-400 tracking-wider mb-1">OpenRouter API Key</label>
-              <input
-                type="password"
-                value={settings.openrouter_api_key}
-                onChange={(e) => handleSaveSettings({ ...settings, openrouter_api_key: e.target.value })}
-                placeholder="sk-or-..."
-                className="w-full premium-input text-xs px-4 py-2"
-              />
-            </div>
-          </div>
+                    <div className="space-y-4">
+            {/* Integrated Engine Configuration */}
+            <div className="space-y-4">
+              <div className="pt-2 border-b border-slate-200 pb-4">
+                <label className="block text-xxs font-semibold uppercase text-slate-400 tracking-wider mb-1">Ollama Esterno (Opzionale)</label>
+                <input
+                  type="text"
+                  value={settings.ollama_url}
+                  onChange={(e) => handleSaveSettings({ ...settings, ollama_url: e.target.value })}
+                  placeholder="http://localhost:11434"
+                  className="w-full premium-input text-xs px-4 py-2 mb-2"
+                />
+              </div>
 
-          {/* Integrated Engine Configuration */}
-          <div className="pt-2 border-t border-slate-200 space-y-4">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-slate-700">Motore Integrato (GGUF / Ollama)</span>
-              <input
-                type="checkbox"
-                checked={settings.ollama_enabled}
-                onChange={(e) => handleSaveSettings({ ...settings, ollama_enabled: e.target.checked })}
-                className="rounded border-slate-300 text-glowCyan focus:ring-glowCyan bg-white"
-              />
-            </div>
-            {settings.ollama_enabled && (
-              <>
-                <div className="space-y-2 bg-slate-50 p-3 rounded-xl border border-slate-200/50">
-                  <div className="pt-2">
-                    <label className="block text-xxs font-semibold uppercase text-slate-400 tracking-wider mb-1">Modello GGUF Selezionato</label>
-                    <div className="flex gap-2">
-                      <select
-                        value={selectedLocalModel}
-                        onChange={(e) => setSelectedLocalModel(e.target.value)}
-                        className="flex-1 premium-input text-xs px-3 py-2"
-                      >
-                        {localModels.length === 0 && <option value="">Nessun modello trovato</option>}
-                        {localModels.map(m => (
-                          <option key={m} value={m}>{m}</option>
-                        ))}
-                      </select>
-                      <button 
-                        onClick={handleImportModel}
-                        className="px-2 py-2 bg-slate-200 text-slate-700 text-xs font-bold rounded-lg hover:bg-slate-300 transition-all"
-                        title="Importa file .gguf"
-                      >
-                        + Importa
-                      </button>
-                    </div>
-                  </div>
-
-                  <div className="pt-2 flex gap-2">
-                    {engineRunning ? (
-                      <button onClick={handleStopEngine} className="flex-1 bg-red-500 hover:bg-red-600 text-white text-xs font-bold py-2 rounded-lg transition-all shadow-sm">
-                        Spegni Motore
-                      </button>
-                    ) : (
-                      <button onClick={handleStartEngine} disabled={!selectedLocalModel} className="flex-1 bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 text-white text-xs font-bold py-2 rounded-lg transition-all shadow-sm">
-                        Avvia Motore
-                      </button>
-                    )}
-                  </div>
-                </div>
-
-                <div className="pt-3 border-t border-slate-200/50 mt-3">
-                  <label className="block text-xxs font-semibold uppercase text-slate-400 tracking-wider mb-1">Ollama Esterno (Opzionale)</label>
-                  <input
-                    type="text"
-                    value={settings.ollama_url}
-                    onChange={(e) => handleSaveSettings({ ...settings, ollama_url: e.target.value })}
-                    placeholder="http://localhost:11434"
-                    className="w-full premium-input text-xs px-4 py-2 mb-2"
-                  />
-                  {ollamaModels.length > 0 ? (
-                    <select
-                      value={settings.ollama_model}
-                      onChange={(e) => handleSaveSettings({ ...settings, ollama_model: e.target.value })}
-                      className="w-full premium-input text-xs px-3 py-2"
-                    >
-                      {ollamaModels.map(m => (
-                        <option key={m.name} value={m.name}>{m.name}</option>
-                      ))}
-                    </select>
+              <div className="space-y-2 bg-slate-50 p-3 rounded-xl border border-slate-200/50">
+                <div className="pt-2 flex gap-2">
+                  {engineRunning ? (
+                    <button onClick={handleStopEngine} className="flex-1 bg-red-500 hover:bg-red-600 text-white text-xs font-bold py-2 rounded-lg transition-all shadow-sm">
+                      Spegni Motore
+                    </button>
                   ) : (
-                    <input
-                      type="text"
-                      value={settings.ollama_model}
-                      onChange={(e) => handleSaveSettings({ ...settings, ollama_model: e.target.value })}
-                      placeholder="llama3 (Nome modello per l'API)"
-                      className="w-full premium-input text-xs px-4 py-2"
-                    />
+                    <button onClick={handleStartEngine} className="flex-1 bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold py-2 rounded-lg transition-all shadow-sm">
+                      Avvia Motore
+                    </button>
                   )}
                 </div>
-              </>
-            )}
-          </div>
+              </div>
+            </div>
 
-          {/* AI Models configuration */}
-          <div className="space-y-4 pt-2">
-            <div>
-              <label className="block text-xxs font-semibold uppercase text-slate-400 tracking-wider mb-1">Generatore (Groq)</label>
-              <select
-                value={settings.groq_model}
-                onChange={(e) => handleSaveSettings({ ...settings, groq_model: e.target.value })}
-                className="w-full premium-input text-xs px-3 py-2"
+            {/* AI Models configuration */}
+            <div className="space-y-4 pt-2 border-t border-slate-200">
+              <div>
+                <label className="block text-xxs font-semibold uppercase text-slate-400 tracking-wider mb-1">Generatore Locale</label>
+                <select
+                  value={settings.local_generator_model}
+                  onChange={(e) => handleSaveSettings({ ...settings, local_generator_model: e.target.value })}
+                  className="w-full premium-input text-xs px-3 py-2 truncate"
+                >
+                  {localModels.length === 0 && ollamaModels.length === 0 && <option value="llama3">llama3</option>}
+                  {[...new Set([...localModels, ...ollamaModels.map(m => m.name)])].map(m => (
+                    <option key={`gen-${m}`} value={m}>{m}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xxs font-semibold uppercase text-slate-400 tracking-wider mb-1">Verificatore Locale</label>
+                <select
+                  value={settings.local_verifier_model}
+                  onChange={(e) => handleSaveSettings({ ...settings, local_verifier_model: e.target.value })}
+                  className="w-full premium-input text-xs px-3 py-2 truncate"
+                >
+                  {localModels.length === 0 && ollamaModels.length === 0 && <option value="llama3">llama3</option>}
+                  {[...new Set([...localModels, ...ollamaModels.map(m => m.name)])].map(m => (
+                    <option key={`ver-${m}`} value={m}>{m}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xxs font-semibold uppercase text-slate-400 tracking-wider mb-1">Programmatore Locale</label>
+                <select
+                  value={settings.local_coder_model}
+                  onChange={(e) => handleSaveSettings({ ...settings, local_coder_model: e.target.value })}
+                  className="w-full premium-input text-xs px-3 py-2 truncate"
+                >
+                  {localModels.length === 0 && ollamaModels.length === 0 && <option value="llama3">llama3</option>}
+                  {[...new Set([...localModels, ...ollamaModels.map(m => m.name)])].map(m => (
+                    <option key={`cod-${m}`} value={m}>{m}</option>
+                  ))}
+                </select>
+              </div>
+              <button 
+                onClick={handleImportModel}
+                className="w-full mt-2 px-2 py-2 bg-slate-200 text-slate-700 text-xs font-bold rounded-lg hover:bg-slate-300 transition-all"
+                title="Importa file .gguf"
               >
-                <option value="llama-3.3-70b-versatile">llama-3.3-70b-versatile</option>
-                <option value="gemma2-9b-it">gemma2-9b-it</option>
-                <option value="llama-3.1-8b-instant">llama-3.1-8b-instant</option>
-                <option value="mixtral-8x7b-32768">mixtral-8x7b-32768</option>
-              </select>
+                + Importa Modello GGUF
+              </button>
             </div>
-            <div>
-              <label className="block text-xxs font-semibold uppercase text-slate-400 tracking-wider mb-1">Verificatore (OpenRouter)</label>
-              <input
-                list="openrouter-models"
-                value={settings.openrouter_model}
-                onChange={(e) => handleSaveSettings({ ...settings, openrouter_model: e.target.value })}
-                className="w-full premium-input text-xs px-3 py-2"
-                placeholder="es. google/gemini-2.5-flash:free"
-              />
-            </div>
-            <div>
-              <label className="block text-xxs font-semibold uppercase text-slate-400 tracking-wider mb-1">Programmatore (OpenRouter)</label>
-              <input
-                list="openrouter-models"
-                value={settings.openrouter_coder_model}
-                onChange={(e) => handleSaveSettings({ ...settings, openrouter_coder_model: e.target.value })}
-                className="w-full premium-input text-xs px-3 py-2"
-                placeholder="es. qwen/qwen-2.5-coder-32b-instruct:free"
-              />
-            </div>
-            <datalist id="openrouter-models">
-              <option value="google/gemini-2.5-flash:free" />
-              <option value="qwen/qwen-2.5-coder-32b-instruct:free" />
-              <option value="meta-llama/llama-3.1-8b-instruct:free" />
-              <option value="deepseek/deepseek-r1:free" />
-              <option value="mistralai/mistral-small-24b-instruct-2501:free" />
-            </datalist>
           </div>
 
           {/* Configuration options (Toggles) */}
@@ -1217,26 +1138,18 @@ Usa l'italiano e sii conciso ed efficace.`;
             </button>
           </div>
 
-          {/* Log Window */}
-          <div className="flex-1 flex flex-col pt-3 border-t border-slate-200">
-            <span className="text-xxs font-semibold uppercase text-slate-500 tracking-wider mb-1.5">Log di Sistema</span>
-            <div className="flex-1 bg-slate-100 border border-slate-200/60 rounded-xl p-3 font-mono text-[10px] overflow-y-auto max-h-44 text-slate-600 space-y-1">
-              {logs.map((log, idx) => (
-                <div key={idx} className="truncate select-text">{log}</div>
-              ))}
-            </div>
           </div>
-        </div>
 
-        {/* Dynamic Tab Area */}
-        <div className="flex-1 flex flex-col h-full bg-transparent">
+        {/* Main Application Logic */}
+        {currentView === 'chat' ? (
+          <div className="flex-1 flex flex-col h-full bg-transparent">
           {activeTab === 'chat' && (
             <div className="flex-1 flex flex-col overflow-hidden relative">
               {/* Reset Session & Info Bar */}
               <div className="flex justify-between items-center px-6 py-2.5 bg-white/40 border-b border-sky-100/40 text-xxs text-slate-500">
                 <div className="flex items-center gap-2">
                   <span className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.3)] animate-pulse"></span>
-                  <span>Modello Attivo: <strong className="text-slate-800">{settings.groq_model}</strong></span>
+                  <span>Generatore: <strong className="text-slate-800">{settings.local_generator_model}</strong></span>
                 </div>
                 <button
                   onClick={handleNewSession}
@@ -1514,9 +1427,59 @@ Usa l'italiano e sii conciso ed efficace.`;
               </div>
             </div>
           )}
-        </div>
-      </div>
+          </div>
+        ) : (
+          <div className="flex-1 flex flex-col h-full bg-slate-50 overflow-hidden">
+            <div className="flex justify-between items-center px-8 py-4 border-b border-slate-200 bg-white">
+              <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2">
+                <svg className="w-5 h-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 2l-2 2h4l-2-2zM3.5 9.5L5 11l-1.5 1.5M20.5 9.5L19 11l1.5 1.5M7 16h10M9 20h6M12 4v2M5 6l2 2m10-2l-2 2" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 12a5 5 0 01-10 0v-4a5 5 0 0110 0v4z" />
+                </svg>
+                Console di Debug Avanzata
+              </h2>
+              <div className="flex gap-2">
+                <button 
+                  onClick={() => setLogs([])}
+                  className="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-bold rounded-lg transition-all"
+                >
+                  Pulisci Log
+                </button>
+              </div>
+            </div>
+            
+            <div className="flex-1 overflow-y-auto p-4 space-y-2">
+              {logs.length === 0 ? (
+                <div className="flex items-center justify-center h-full text-slate-400 font-mono text-sm">
+                  Nessun evento registrato.
+                </div>
+              ) : (
+                logs.map(log => {
+                  let badgeColor = 'bg-slate-200 text-slate-700';
+                  if (log.category === 'ERROR') badgeColor = 'bg-red-100 text-red-700 border border-red-200';
+                  if (log.category === 'API') badgeColor = 'bg-blue-100 text-blue-700 border border-blue-200';
+                  if (log.category === 'SYSTEM') badgeColor = 'bg-slate-100 text-slate-600 border border-slate-200';
+                  if (log.category === 'USER') badgeColor = 'bg-emerald-100 text-emerald-700 border border-emerald-200';
 
+                  const timeStr = new Date(log.timestamp).toLocaleTimeString('it-IT', { hour12: false, hour: '2-digit', minute:'2-digit', second:'2-digit' });
+
+                  return (
+                    <div key={log.id} className={`p-3 rounded-lg flex items-start gap-4 font-mono text-xs ${log.category === 'ERROR' ? 'bg-red-50/50' : 'bg-white shadow-sm border border-slate-100'}`}>
+                      <div className="text-slate-400 min-w-[100px] mt-0.5">{timeStr}</div>
+                      <div className={`px-2 py-0.5 rounded-md text-[10px] font-bold ${badgeColor} min-w-[70px] text-center uppercase tracking-wider`}>
+                        {log.category}
+                      </div>
+                      <div className={`flex-1 break-words ${log.category === 'ERROR' ? 'text-red-700 font-semibold' : 'text-slate-700'}`}>
+                        {log.message}
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </div>
+        )}
+      </div>
       {/* Footer bar */}
       <footer className="flex items-center justify-between px-6 py-2.5 bg-white/90 border-t border-sky-100/40 text-[10px] text-slate-500 font-medium tracking-wide">
         <div className="flex items-center gap-2">

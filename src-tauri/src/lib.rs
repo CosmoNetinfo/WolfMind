@@ -55,12 +55,10 @@ fn ensure_dirs_and_defaults() -> Result<(), String> {
     let settings_path = config_dir.join("settings.json");
     if !settings_path.exists() {
         let default_settings = r#"{
-  "groq_api_key": "",
-  "openrouter_api_key": "",
-  "groq_model": "llama-3.3-70b-versatile",
-  "openrouter_model": "google/gemini-2.5-flash:free",
+  "local_generator_model": "llama3",
+  "local_verifier_model": "llama3",
+  "local_coder_model": "llama3",
   "coder_enabled": true,
-  "openrouter_coder_model": "google/gemini-2.5-flash:free",
   "tts_enabled": true,
   "tts_voice": "auto-italian",
   "tts_rate": 1.05,
@@ -69,9 +67,7 @@ fn ensure_dirs_and_defaults() -> Result<(), String> {
   "kb_max_tokens": 8000,
   "auto_save_session": true,
   "language": "it",
-  "ollama_enabled": false,
   "ollama_url": "http://localhost:11434",
-  "ollama_model": "llama3",
   "continuous_listening": false,
   "rag_enabled": true
 }"#;

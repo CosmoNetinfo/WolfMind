@@ -13,97 +13,56 @@ export interface VerificationResult {
 }
 
 /**
- * Sends a message to the Groq API (Generator Agent)
+ * Sends a message to the Local Generator Model (Ollama/GGUF)
  */
-export async function sendMessageToGroq(
-  apiKey: string,
+export async function sendMessageToLocalGenerator(
   model: string,
   systemPrompt: string,
   conversationHistory: ChatMessage[],
-  ollamaEnabled?: boolean,
-  ollamaUrl?: string,
-  ollamaModel?: string
+  ollamaUrl?: string
 ): Promise<string> {
   const messages = [
     { role: 'system', content: systemPrompt },
     ...conversationHistory
   ];
 
-  if (ollamaEnabled) {
-    const baseUrl = (ollamaUrl || 'http://localhost:11434').replace(/\/$/, '');
-    try {
-      const response = await fetch(`${baseUrl}/v1/chat/completions`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          model: ollamaModel || 'llama3',
-          messages,
-          temperature: 0.7,
-        })
-      });
-
-      if (!response.ok) {
-        throw new Error(`Errore HTTP Ollama: ${response.status}`);
-      }
-
-      const data = await response.json();
-      return data.choices[0]?.message?.content || '';
-    } catch (error: any) {
-      console.error("Ollama API error:", error);
-      throw new Error(error.message || "Impossibile connettersi al server locale Ollama. Assicurati che sia avviato.");
-    }
-  }
-
-  if (!apiKey) {
-    throw new Error("API Key di Groq mancante. Inseriscila nella sidebar.");
-  }
-
+  const baseUrl = (ollamaUrl || 'http://localhost:11434').replace(/\/$/, '');
   try {
-    const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+    const response = await fetch(`${baseUrl}/v1/chat/completions`, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`
+        'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        model: model || 'llama-3.3-70b-versatile',
+        model: model || 'llama3',
         messages,
         temperature: 0.7,
       })
     });
 
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error?.message || `Errore HTTP Groq: ${response.status}`);
+      throw new Error(`Errore HTTP Motore Locale: ${response.status}`);
     }
 
     const data = await response.json();
     return data.choices[0]?.message?.content || '';
   } catch (error: any) {
-    console.error("Groq API error:", error);
-    throw new Error(error.message || "Impossibile connettersi a Groq. Controlla la connessione internet.");
+    console.error("Local Generator error:", error);
+    throw new Error("Impossibile connettersi al server locale. Assicurati che il Motore sia avviato o che Ollama sia acceso.");
   }
 }
 
 /**
- * Sends a verification request to OpenRouter API (Verifier Agent) with an 8-second timeout
+ * Sends a verification request to Local Model (Verifier Agent) with an 8-second timeout
  */
-export async function verifyResponseWithOpenRouter(
-  apiKey: string,
+export async function verifyResponseWithLocalVerifier(
   model: string,
   originalUserPrompt: string,
   generatorResponse: string,
   kbContext: string,
-  activeMode: string
+  activeMode: string,
+  ollamaUrl?: string
 ): Promise<VerificationResult> {
-  if (!apiKey) {
-    return {
-      status: 'unavailable',
-      note: 'Verifica non disponibile: API Key di OpenRouter mancante.'
-    };
-  }
 
   const verifierSystemPrompt = `Sei l'Agente Verificatore di WolfMind. Il tuo compito è analizzare la risposta fornita da un modello AI (il Generatore) a fronte della richiesta dell'utente, del contesto della Knowledge Base locale e della modalità di lavoro attiva (${activeMode.toUpperCase()}).
 
@@ -140,22 +99,21 @@ Fornisci la tua verifica strutturata esclusivamente in JSON come richiesto.`;
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), 8000); // 8s timeout
 
+  const baseUrl = (ollamaUrl || 'http://localhost:11434').replace(/\/$/, '');
   try {
-    const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+    const response = await fetch(`${baseUrl}/v1/chat/completions`, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`,
-        'HTTP-Referer': 'https://github.com/tauri-apps/tauri',
-        'X-Title': 'WolfMind Desktop Agent'
+        'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        model: model || 'qwen/qwen-2.5-72b-instruct:free',
+        model: model || 'llama3',
         messages: [
           { role: 'system', content: verifierSystemPrompt },
           { role: 'user', content: userPrompt }
         ],
-        response_format: { type: "json_object" }
+        response_format: { type: "json_object" },
+        temperature: 0.1
       }),
       signal: controller.signal
     });
@@ -166,7 +124,7 @@ Fornisci la tua verifica strutturata esclusivamente in JSON come richiesto.`;
       const errBody = await response.text().catch(() => '');
       return {
         status: 'unavailable',
-        note: `Verifica non disponibile: errore API OpenRouter (Status ${response.status}) sul modello ${model || 'qwen/qwen-2.5-72b-instruct:free'}. Dettaglio: ${errBody}`
+        note: `Verifica non disponibile: errore Motore Locale (Status ${response.status}). Dettaglio: ${errBody}`
       };
     }
 
@@ -220,18 +178,15 @@ Fornisci la tua verifica strutturata esclusivamente in JSON come richiesto.`;
 }
 
 /**
- * Sends a code refinement request to OpenRouter API (Coder Agent)
+ * Sends a code refinement request to Local Model (Coder Agent)
  */
-export async function refineCodeWithCoderAgent(
-  apiKey: string,
+export async function refineCodeWithLocalCoder(
   model: string,
   originalUserPrompt: string,
   generatorResponse: string,
-  kbContext: string
+  kbContext: string,
+  ollamaUrl?: string
 ): Promise<string> {
-  if (!apiKey) {
-    throw new Error("API Key di OpenRouter mancante per l'Agente Programmatore.");
-  }
 
   const coderSystemPrompt = `Sei l'Agente Programmatore di WolfMind. Il tuo compito è analizzare la risposta tecnica del Generatore e assicurarti che tutti i blocchi di codice o di markup presenti siano completi (nessun segnaposto o commento incompleto), sintatticamente corretti, privi di bug e scritti secondo le best practice.
 Riscrivi la risposta ottimizzando esclusivamente le porzioni di codice o di markup, lasciando intatto il testo circostante. Se non è presente alcun codice, restituisci la risposta originale intatta.`;
@@ -253,17 +208,15 @@ ${generatorResponse}
 
 Fornisci la versione finale ottimizzata mantenendo la stessa struttura della risposta originale.`;
 
+  const baseUrl = (ollamaUrl || 'http://localhost:11434').replace(/\/$/, '');
   try {
-    const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+    const response = await fetch(`${baseUrl}/v1/chat/completions`, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`,
-        'HTTP-Referer': 'https://github.com/tauri-apps/tauri',
-        'X-Title': 'WolfMind Desktop Agent'
+        'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        model: model || 'qwen/qwen-2.5-coder-32b-instruct:free',
+        model: model || 'llama3',
         messages: [
           { role: 'system', content: coderSystemPrompt },
           { role: 'user', content: userPrompt }
@@ -272,8 +225,7 @@ Fornisci la versione finale ottimizzata mantenendo la stessa struttura della ris
     });
 
     if (!response.ok) {
-      const errBody = await response.text().catch(() => '');
-      throw new Error(`Errore API Programmatore (Status ${response.status}) sul modello ${model || 'qwen/qwen-2.5-coder-32b-instruct:free'}. Dettaglio: ${errBody}`);
+      throw new Error(`Errore HTTP Motore Locale: ${response.status}`);
     }
 
     const data = await response.json();
