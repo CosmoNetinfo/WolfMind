@@ -1628,11 +1628,11 @@ Usa l'italiano e sii conciso ed efficace.`;
 
       {/* Toast Notification */}
       {toast && (
-        <div className={`fixed bottom-12 right-6 z-50 glass px-5 py-3.5 border-l-4 rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.5)] flex items-center gap-3 animate-toast ${
-          toast.type === 'error' ? 'border-red-500/80 bg-red-950/35' : 
-          toast.type === 'info' ? 'border-glowBlue/80 bg-glowBlue/10' : 'border-glowCyan/80 bg-glowCyan/5'
+        <div className={`fixed bottom-12 right-6 z-50 px-5 py-3.5 rounded-xl shadow-lg flex items-center gap-3 animate-toast text-white ${
+          toast.type === 'error' ? 'bg-red-600' : 
+          toast.type === 'info' ? 'bg-sky-600' : 'bg-emerald-500'
         }`}>
-          <span className="text-xs font-bold tracking-wide text-white">{toast.message}</span>
+          <span className="text-xs font-bold tracking-wide">{toast.message}</span>
         </div>
       )}
     </div>

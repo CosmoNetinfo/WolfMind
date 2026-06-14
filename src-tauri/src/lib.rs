@@ -630,10 +630,10 @@ pub fn run() {
                 #[cfg(target_os = "windows")]
                 {
                     let _ = std::process::Command::new("taskkill")
-                        .args(["/F", "/IM", "llama-server.exe"])
+                        .args(["/F", "/T", "/IM", "llama-server.exe"])
                         .output();
                     let _ = std::process::Command::new("taskkill")
-                        .args(["/F", "/IM", "piper.exe"])
+                        .args(["/F", "/T", "/IM", "piper.exe"])
                         .output();
                 }
             }
