@@ -82,6 +82,7 @@ export default function App() {
   // Local Engine (GGUF) state
   const [localModels, setLocalModels] = useState<string[]>([]);
   const [engineRunning, setEngineRunning] = useState(false);
+  const [engineReady, setEngineReady] = useState(false);
 
   const showToast = (message: string, type: 'success' | 'error' | 'info' = 'info') => {
     setToast({ message, type });
@@ -108,7 +109,40 @@ export default function App() {
     return () => controller.abort();
   }, [settings.ollama_url]);
 
+  // Poll engine readiness
+  useEffect(() => {
+    if (!engineRunning) {
+      setEngineReady(false);
+      return;
+    }
+    
+    let isMounted = true;
+    let pollInterval: any = null;
 
+    const checkEngine = async () => {
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 2000);
+        const res = await fetch(`${settings.ollama_url.replace(/\/$/, '')}/api/tags`, {
+          signal: controller.signal
+        });
+        clearTimeout(timeoutId);
+        if (res.ok && isMounted) {
+          setEngineReady(true);
+        }
+      } catch (e) {
+        if (isMounted) setEngineReady(false);
+      }
+    };
+
+    checkEngine();
+    pollInterval = setInterval(checkEngine, 2000);
+
+    return () => {
+      isMounted = false;
+      clearInterval(pollInterval);
+    };
+  }, [engineRunning, settings.ollama_url]);
 
   const refreshLocalModels = async (currentSettings?: AppSettings) => {
     try {
@@ -592,6 +626,10 @@ export default function App() {
   // Send message pipeline
   const handleSendMessage = async (e?: React.FormEvent, directQuery?: string) => {
     if (e) e.preventDefault();
+    if (engineRunning && !engineReady) {
+      showToast("Attendere che il motore sia pronto (Semaforo Verde).", 'error');
+      return;
+    }
     const userQuery = directQuery ? directQuery.trim() : inputText.trim();
     if (!userQuery) return;
 
@@ -1009,10 +1047,18 @@ Usa l'italiano e sii conciso ed efficace.`;
             <button onClick={() => setShowSettingsPanel(false)} className="text-slate-500 hover:text-slate-800 text-xs font-semibold transition-colors">Chiudi</button>
           </div>
 
-                    <div className="space-y-4">
+          <div className="space-y-4">
             {/* Integrated Engine Configuration */}
             <div className="space-y-4">
-
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold text-slate-700">Stato Motore</span>
+                <div className="flex items-center gap-2">
+                  <div className={`w-3 h-3 rounded-full ${!engineRunning ? 'bg-red-500' : (engineReady ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)]' : 'bg-yellow-500 animate-pulse')}`}></div>
+                  <span className="text-[10px] text-slate-500 uppercase font-bold tracking-wider">
+                    {!engineRunning ? 'Spento' : (engineReady ? 'Pronto' : 'Caricamento')}
+                  </span>
+                </div>
+              </div>
 
               <div className="space-y-2 bg-slate-50 p-3 rounded-xl border border-slate-200/50">
                 <div className="pt-2 flex gap-2">
