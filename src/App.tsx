@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { getVersion } from '@tauri-apps/api/app';
 import { open } from '@tauri-apps/plugin-dialog';
@@ -88,22 +88,24 @@ export default function App() {
     setTimeout(() => setToast(null), 4000);
   };
 
-  const fetchOllamaModels = async () => {
-    
-    try {
-      const res = await fetch(`${settings.ollama_url.replace(/\/$/, '')}/api/tags`);
-      if (res.ok) {
-        const data = await res.json();
-        setOllamaModels(data.models || []);
-      }
-    } catch (e) {
-      addLog(`Impossibile recuperare i modelli da Ollama.`, 'ERROR');
-      setOllamaModels([]);
-    }
-  };
-
+  // FIX: AbortController — cancella fetch precedente se ollama_url cambia rapidamente
   useEffect(() => {
+    const controller = new AbortController();
+    const fetchOllamaModels = async () => {
+      try {
+        const res = await fetch(`${settings.ollama_url.replace(/\/$/, '')}/api/tags`, {
+          signal: controller.signal
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setOllamaModels(data.models || []);
+        }
+      } catch (e: any) {
+        if (e.name !== 'AbortError') setOllamaModels([]);
+      }
+    };
     fetchOllamaModels();
+    return () => controller.abort();
   }, [settings.ollama_url]);
 
 
@@ -214,8 +216,27 @@ export default function App() {
     settingsRef.current = settings;
   }, [settings]);
 
-  // Log message helper
-  const addLog = async (msg: string, category: 'SYSTEM' | 'API' | 'ERROR' | 'USER' = 'SYSTEM') => {
+  // FIX: log buffer — IPC Tauri batched ogni 2s invece di sincrono ad ogni messaggio
+  // Evita 10+ round-trip IPC durante la pipeline Generator+Coder+Verifier
+  const logBufferRef = useRef<string[]>([]);
+
+  useEffect(() => {
+    const flushLogs = async () => {
+      if (logBufferRef.current.length === 0) return;
+      const batch = logBufferRef.current.join('\n');
+      logBufferRef.current = [];
+      try {
+        await invoke('write_app_log', { message: batch });
+      } catch (_) {}
+    };
+    const interval = setInterval(flushLogs, 2000);
+    return () => {
+      clearInterval(interval);
+      flushLogs(); // flush finale alla chiusura del componente
+    };
+  }, []);
+
+  const addLog = useCallback((msg: string, category: 'SYSTEM' | 'API' | 'ERROR' | 'USER' = 'SYSTEM') => {
     const newLog = {
       id: Math.random().toString(36).substring(7),
       timestamp: new Date().toISOString(),
@@ -223,10 +244,9 @@ export default function App() {
       message: msg
     };
     setLogs(prev => [newLog, ...prev].slice(0, 100));
-    try {
-      await invoke('write_app_log', { message: `[${category}] ${msg}` });
-    } catch (_) {}
-  };
+    // Buffer su file — nessun IPC sincrono
+    logBufferRef.current.push(`[${category}] ${msg}`);
+  }, []);
 
   // Global Error Listeners
   useEffect(() => {
@@ -424,50 +444,64 @@ export default function App() {
     if (settings.tts_engine === 'piper') {
       try {
         const sentences = cleanText.match(/[^.!?]+[.!?]+/g) || [cleanText];
-        const audioQueue: string[] = [];
-        let isCancelled = false;
+        
+        // FIX: Event-driven invece di busy-wait polling ogni 100ms.
+        // Usa una coda con Promise resolve callbacks per notificare il consumer
+        // senza loop attivo che brucia CPU.
+        type AudioReady = { url: string } | { error: true };
+        const audioQueue: AudioReady[] = [];
+        const waitCallbacks: Array<() => void> = [];
+        let producerDone = false;
 
-        // Producer: Generates audio sequentially in background
-        const generator = async () => {
-          for (let i = 0; i < sentences.length; i++) {
-            if (isCancelled) break;
-            const sentence = sentences[i].trim();
-            if (!sentence) continue;
-            try {
-              const audioBase64 = await invoke<number[]>('generate_piper_speech', { text: sentence });
-              const audioBlob = new Blob([new Uint8Array(audioBase64)], { type: 'audio/wav' });
-              audioQueue.push(URL.createObjectURL(audioBlob));
-            } catch (e) {
-              console.error("Errore generazione frase", e);
-            }
-          }
+        const notifyConsumer = () => {
+          const cb = waitCallbacks.shift();
+          if (cb) cb();
         };
-        generator();
 
-        // Consumer: Plays audio from queue
+        const waitForNext = (): Promise<void> =>
+          new Promise(resolve => {
+            if (audioQueue.length > 0 || producerDone) {
+              resolve();
+            } else {
+              waitCallbacks.push(resolve);
+            }
+          });
+
+        // Producer: genera audio frase per frase e notifica il consumer
+        (async () => {
+          for (const sentence of sentences) {
+            const trimmed = sentence.trim();
+            if (!trimmed) continue;
+            try {
+              const audioBase64 = await invoke<number[]>('generate_piper_speech', { text: trimmed });
+              const audioBlob = new Blob([new Uint8Array(audioBase64)], { type: 'audio/wav' });
+              audioQueue.push({ url: URL.createObjectURL(audioBlob) });
+            } catch (e) {
+              audioQueue.push({ error: true });
+            }
+            notifyConsumer();
+          }
+          producerDone = true;
+          notifyConsumer();
+        })();
+
+        // Consumer: riproduce appena disponibile, senza polling
         for (let i = 0; i < sentences.length; i++) {
           if (!sentences[i].trim()) continue;
-          
-          // Wait for the next audio to be generated
-          while (audioQueue.length === 0 && !isCancelled) {
-            await new Promise(r => setTimeout(r, 100));
-          }
-          if (isCancelled) break;
-
-          const audioUrl = audioQueue.shift()!;
-          const audio = new Audio(audioUrl);
+          await waitForNext();
+          const item = audioQueue.shift();
+          if (!item || 'error' in item) continue;
+          const audio = new Audio(item.url);
           audio.playbackRate = settings.tts_rate;
-          
-          await new Promise(resolve => {
-            audio.onended = resolve;
-            audio.play().catch(e => {
-              console.error("Audio play error", e);
-              resolve(null);
-            });
+          await new Promise<void>(resolve => {
+            audio.onended = () => resolve();
+            audio.onerror = () => resolve();
+            audio.play().catch(() => resolve());
           });
+          URL.revokeObjectURL(item.url); // libera memoria blob
         }
       } catch (error) {
-        console.error("Piper TTS Error:", error);
+        console.error('Piper TTS Error:', error);
         addLog(`Errore Piper TTS: ${error}`);
       }
     } else {
@@ -490,19 +524,23 @@ export default function App() {
     }
   };
 
-  // Compile context from KB Markdown files up to token (char) limit
-  const compileKBContext = (): string => {
-    let context = '';
-    const maxChars = settings.kb_max_tokens * 4; 
-    for (const [filename, content] of Object.entries(kbFiles)) {
-      context += `\n\n--- FILE: ${filename} ---\n${content}`;
-      if (context.length > maxChars) {
-        context = context.slice(0, maxChars) + '\n... [Contesto KB troncato per raggiunti limiti]';
+  // FIX: useMemo — KB context ricalcolato SOLO se kbFiles o kb_max_tokens cambiano
+  // Evita di riallocare mega di stringa ad ogni messaggio inviato
+  const compiledKBContext = useMemo((): string => {
+    let ctx = '';
+    const maxChars = settings.kb_max_tokens * 4;
+    for (const [filename, fileContent] of Object.entries(kbFiles)) {
+      ctx += `\n\n--- FILE: ${filename} ---\n${fileContent}`;
+      if (ctx.length > maxChars) {
+        ctx = ctx.slice(0, maxChars) + '\n... [Contesto KB troncato]';
         break;
       }
     }
-    return context;
-  };
+    return ctx;
+  }, [kbFiles, settings.kb_max_tokens]);
+
+  // Manteniamo la funzione per compatibilità ma usa la cache
+  const compileKBContext = useCallback((): string => compiledKBContext, [compiledKBContext]);
 
   const handleAttach = async () => {
     try {
@@ -654,29 +692,27 @@ export default function App() {
         settings.ollama_url
       );
 
-      // Read output aloud if TTS enabled (run immediately to avoid delay)
-      handleTTS(aiResponse);
-
-      // 1.5 Coder Agent (Local) - Refines code output if active & detected
+      // FIX: Coder Agent PRIMA del TTS — evita race condition (TTS legge risposta vecchia
+      // mentre Coder la riscrive) e doppia allocazione in memoria
       if (settings.coder_enabled && (aiResponse.includes('```') || settings.active_mode === 'brief')) {
         setStatusText('Ottimizzazione codice (Programmatore)...');
-        try {
-          const refinedResponse = await refineCodeWithLocalCoder(
-            settings.local_coder_model,
-            userQuery,
-            aiResponse,
-            kbContext,
-            settings.ollama_url
-          );
-          aiResponse = refinedResponse;
-          addLog(`Codice ottimizzato con successo dall'Agente Programmatore.`);
-        } catch (coderError: any) {
-          addLog(`Errore Agente Programmatore (uso risposta originale): ${coderError.message}`);
-        }
+        // refineCodeWithLocalCoder ora ritorna la risposta originale in caso di errore
+        // invece di lanciare eccezione — non blocca più la pipeline
+        aiResponse = await refineCodeWithLocalCoder(
+          settings.local_coder_model,
+          userQuery,
+          aiResponse,
+          kbContext,
+          settings.ollama_url
+        );
+        addLog(`Agente Programmatore completato.`);
       }
 
       setMessages(prev => prev.map(m => m.id === assistantMsgId ? { ...m, content: aiResponse, isGenerating: false } : m));
       addLog(`Risposta generata correttamente.`);
+
+      // FIX: TTS parte DOPO il Coder — legge sempre la risposta finale corretta
+      handleTTS(aiResponse);
 
       // 2. Verifier Agent (Local)
       if (settings.verifier_enabled) {

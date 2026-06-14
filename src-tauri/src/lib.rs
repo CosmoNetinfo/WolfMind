@@ -417,7 +417,14 @@ fn write_app_log(message: String) -> Result<(), String> {
         .open(log_path)
         .map_err(|e| e.to_string())?;
     let now = chrono::Local::now().format("%Y-%m-%d %H:%M:%S");
-    writeln!(file, "[{}] {}", now, message).map_err(|e| e.to_string())
+    // FIX: supporta messaggi batch (multi-riga) inviati dal frontend ogni 2s
+    // invece di un IPC per ogni singola riga di log
+    for line in message.lines() {
+        if !line.trim().is_empty() {
+            writeln!(file, "[{}] {}", now, line).map_err(|e| e.to_string())?;
+        }
+    }
+    Ok(())
 }
 
 use tauri_plugin_shell::process::CommandChild;

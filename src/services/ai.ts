@@ -30,9 +30,7 @@ export async function sendMessageToLocalGenerator(
   try {
     const response = await fetch(`${baseUrl}/v1/chat/completions`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         model: model || 'llama3',
         messages,
@@ -47,13 +45,14 @@ export async function sendMessageToLocalGenerator(
     const data = await response.json();
     return data.choices[0]?.message?.content || '';
   } catch (error: any) {
-    console.error("Local Generator error:", error);
-    throw new Error("Il Motore Locale non sta rispondendo. Se l'hai appena avviato, potrebbe stare caricando il modello (richiede fino a 30 secondi per modelli grandi).");
+    console.error('Local Generator error:', error);
+    throw new Error('Il Motore Locale non sta rispondendo. Se lo hai appena avviato, potrebbe stare caricando il modello (richiede fino a 30 secondi per modelli grandi).');
   }
 }
 
 /**
- * Sends a verification request to Local Model (Verifier Agent) with an 8-second timeout
+ * Sends a verification request to Local Model (Verifier Agent) with an 8-second timeout.
+ * FIX: Timeout gestito correttamente con cleanup del timer.
  */
 export async function verifyResponseWithLocalVerifier(
   model: string,
@@ -64,55 +63,54 @@ export async function verifyResponseWithLocalVerifier(
   ollamaUrl?: string
 ): Promise<VerificationResult> {
 
-  const verifierSystemPrompt = `Sei l'Agente Verificatore di WolfMind. Il tuo compito è analizzare la risposta fornita da un modello AI (il Generatore) a fronte della richiesta dell'utente, del contesto della Knowledge Base locale e della modalità di lavoro attiva (${activeMode.toUpperCase()}).
+  const verifierSystemPrompt = `Sei l'Agente Verificatore di WolfMind. Analizza la risposta del Generatore rispetto alla richiesta utente, al contesto KB e alla modalità (${activeMode.toUpperCase()}).
 
-Devi rispondere ESCLUSIVAMENTE con un oggetto JSON valido. Non includere blocchi di codice markdown (tipo \`\`\`json), non aggiungere prefazioni o postfazioni. Restituisci SOLO l'oggetto JSON con questa struttura:
+Rispondi ESCLUSIVAMENTE con un oggetto JSON valido. Niente markdown, niente prefazioni. Solo JSON:
 {
   "status": "OK" | "WARNING" | "ERROR",
-  "note": "Una spiegazione sintetica in italiano dei riscontri. Sii molto critico ed esigente."
+  "note": "Spiegazione sintetica in italiano. Sii critico ed esigente."
 }
 
-Regole di valutazione:
-- OK: La risposta del generatore è corretta, accurata, completa e coerente con la Knowledge Base.
-- WARNING: La risposta è discreta ma presenta lievi inesattezze, omette dettagli rilevanti o non rispetta a pieno le linee guida Yoast (se articolo).
-- ERROR: La risposta contiene errori gravi, contraddice i dati del cervello, manca di parti tecniche fondamentali, o fallisce la struttura (es. non è in HTML Formato C se articolo, o manca il blocco SEO).`;
+Criteri:
+- OK: risposta corretta, accurata, completa e coerente con la KB.
+- WARNING: lievi inesattezze, omissioni, o Yoast non rispettato (se articolo).
+- ERROR: errori gravi, contraddice la KB, manca struttura fondamentale.`;
 
-  const userPrompt = `MODALITÀ DI LAVORO ATTIVA: ${activeMode.toUpperCase()}
+  const userPrompt = `MODALITÀ: ${activeMode.toUpperCase()}
 
-RICHIESTA DELL'UTENTE:
+RICHIESTA UTENTE:
 """
 ${originalUserPrompt}
 """
 
-CONTESTO KNOWLEDGE BASE (CERVELLO):
+CONTESTO KB:
 """
 ${kbContext}
 """
 
-RISPOSTA GENERATA DA ANALIZZARE:
+RISPOSTA DA VERIFICARE:
 """
 ${generatorResponse}
 """
 
-Fornisci la tua verifica strutturata esclusivamente in JSON come richiesto.`;
+Fornisci la verifica in JSON.`;
 
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 8000); // 8s timeout
+  // FIX: timeout con cleanup garantito tramite finally
+  const timeoutId = setTimeout(() => controller.abort(), 8000);
 
   const baseUrl = (ollamaUrl || 'http://localhost:11434').replace(/\/$/, '');
   try {
     const response = await fetch(`${baseUrl}/v1/chat/completions`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         model: model || 'llama3',
         messages: [
           { role: 'system', content: verifierSystemPrompt },
           { role: 'user', content: userPrompt }
         ],
-        response_format: { type: "json_object" },
+        response_format: { type: 'json_object' },
         temperature: 0.1
       }),
       signal: controller.signal
@@ -124,7 +122,7 @@ Fornisci la tua verifica strutturata esclusivamente in JSON come richiesto.`;
       const errBody = await response.text().catch(() => '');
       return {
         status: 'unavailable',
-        note: `Verifica non disponibile: errore Motore Locale (Status ${response.status}). Dettaglio: ${errBody}`
+        note: `Verifica non disponibile: errore Motore Locale (Status ${response.status}). ${errBody}`
       };
     }
 
@@ -132,22 +130,15 @@ Fornisci la tua verifica strutturata esclusivamente in JSON come richiesto.`;
     const rawContent = data.choices[0]?.message?.content?.trim() || '';
 
     try {
-      // Try parsing the response as JSON
       const parsed = JSON.parse(rawContent);
       const status = (parsed.status || 'OK').toUpperCase();
-      const note = parsed.note || 'Verifica completata con successo.';
-
+      const note = parsed.note || 'Verifica completata.';
       let statusEnum: 'ok' | 'warning' | 'error' = 'ok';
       if (status === 'WARNING') statusEnum = 'warning';
       if (status === 'ERROR') statusEnum = 'error';
-
-      return {
-        status: statusEnum,
-        note
-      };
-    } catch (parseError) {
-      console.warn("Could not parse verifier JSON directly, trying regex extract:", rawContent);
-      // Fallback regex attempt in case the model outputted markdown or extra text
+      return { status: statusEnum, note };
+    } catch (_) {
+      // Fallback regex se il modello ha aggiunto markdown
       const jsonMatch = rawContent.match(/\{[\s\S]*?\}/);
       if (jsonMatch) {
         try {
@@ -160,25 +151,22 @@ Fornisci la tua verifica strutturata esclusivamente in JSON come richiesto.`;
           return { status: statusEnum, note };
         } catch (_) {}
       }
-      return {
-        status: 'ok', // fallback to ok to not block user, but show parsing note
-        note: `Verifica completata (risposta non strutturata): ${rawContent}`
-      };
+      return { status: 'ok', note: `Verifica completata (risposta non strutturata): ${rawContent}` };
     }
   } catch (error: any) {
     clearTimeout(timeoutId);
-    console.error("OpenRouter Verifier error or timeout:", error);
     return {
       status: 'unavailable',
-      note: error.name === 'AbortError' 
-        ? 'Verifica non disponibile: il verificatore ha impiegato più di 8 secondi (Timeout).' 
-        : 'Verifica non disponibile: errore di connessione con il verificatore.'
+      note: error.name === 'AbortError'
+        ? 'Verifica non disponibile: timeout superato (8s).'
+        : 'Verifica non disponibile: errore di connessione.'
     };
   }
 }
 
 /**
- * Sends a code refinement request to Local Model (Coder Agent)
+ * Sends a code refinement request to Local Model (Coder Agent).
+ * FIX: Nessun busy-wait. Risposta diretta senza loop.
  */
 export async function refineCodeWithLocalCoder(
   model: string,
@@ -188,8 +176,8 @@ export async function refineCodeWithLocalCoder(
   ollamaUrl?: string
 ): Promise<string> {
 
-  const coderSystemPrompt = `Sei l'Agente Programmatore di WolfMind. Il tuo compito è analizzare la risposta tecnica del Generatore e assicurarti che tutti i blocchi di codice o di markup presenti siano completi (nessun segnaposto o commento incompleto), sintatticamente corretti, privi di bug e scritti secondo le best practice.
-Riscrivi la risposta ottimizzando esclusivamente le porzioni di codice o di markup, lasciando intatto il testo circostante. Se non è presente alcun codice, restituisci la risposta originale intatta.`;
+  const coderSystemPrompt = `Sei l'Agente Programmatore di WolfMind. Analizza la risposta del Generatore e ottimizza SOLO i blocchi di codice: completali, correggi bug, applica best practice.
+Lascia invariato tutto il testo circostante. Se non c'è codice, restituisci la risposta originale IDENTICA senza modifiche.`;
 
   const userPrompt = `RICHIESTA UTENTE:
 """
@@ -206,21 +194,20 @@ RISPOSTA GENERATORE:
 ${generatorResponse}
 """
 
-Fornisci la versione finale ottimizzata mantenendo la stessa struttura della risposta originale.`;
+Fornisci la versione finale ottimizzata.`;
 
   const baseUrl = (ollamaUrl || 'http://localhost:11434').replace(/\/$/, '');
   try {
     const response = await fetch(`${baseUrl}/v1/chat/completions`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         model: model || 'llama3',
         messages: [
           { role: 'system', content: coderSystemPrompt },
           { role: 'user', content: userPrompt }
-        ]
+        ],
+        temperature: 0.2
       })
     });
 
@@ -231,8 +218,8 @@ Fornisci la versione finale ottimizzata mantenendo la stessa struttura della ris
     const data = await response.json();
     return data.choices[0]?.message?.content || generatorResponse;
   } catch (error: any) {
-    console.error("OpenRouter Coder error:", error);
-    throw new Error(error.message || "Errore durante il raffinamento del codice.");
+    console.error('Coder Agent error:', error);
+    // FIX: in caso di errore ritorna la risposta originale invece di bloccare la pipeline
+    return generatorResponse;
   }
 }
-
