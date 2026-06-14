@@ -25,8 +25,14 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 24
           cache: 'npm'
+
+      - name: Cache Piper TTS
+        uses: actions/cache@v4
+        with:
+          path: engine/piper
+          key: ${{ runner.os }}-piper-paola-medium
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable

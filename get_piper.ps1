@@ -20,8 +20,29 @@ Remove-Item "$engineDir\piper" -Recurse -Force
 Write-Host "Downloading Paola Medium Model..."
 $modelUrl = "https://huggingface.co/rhasspy/piper-voices/resolve/main/it/it_IT/paola/medium/it_IT-paola-medium.onnx"
 $jsonUrl = "https://huggingface.co/rhasspy/piper-voices/resolve/main/it/it_IT/paola/medium/it_IT-paola-medium.onnx.json"
+$modelUrlMirror = "https://hf-mirror.com/rhasspy/piper-voices/resolve/main/it/it_IT/paola/medium/it_IT-paola-medium.onnx"
+$jsonUrlMirror = "https://hf-mirror.com/rhasspy/piper-voices/resolve/main/it/it_IT/paola/medium/it_IT-paola-medium.onnx.json"
 
-Invoke-WebRequest -Uri $modelUrl -OutFile "$engineDir\it_IT-paola-medium.onnx"
-Invoke-WebRequest -Uri $jsonUrl -OutFile "$engineDir\it_IT-paola-medium.onnx.json"
+function Download-WithRetry {
+    param([string]$url, [string]$urlMirror, [string]$outFile)
+    $maxRetries = 3
+    for ($i = 1; $i -le $maxRetries; $i++) {
+        try {
+            Invoke-WebRequest -Uri $url -OutFile $outFile -UserAgent "Mozilla/5.0 (Windows NT 10.0; Win64; x64)" -ErrorAction Stop
+            return
+        } catch {
+            Write-Host "Attempt $i failed for $url. Error: $($_.Exception.Message)"
+            if ($i -eq $maxRetries) {
+                Write-Host "Trying mirror..."
+                Invoke-WebRequest -Uri $urlMirror -OutFile $outFile -UserAgent "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
+                return
+            }
+            Start-Sleep -Seconds 10
+        }
+    }
+}
+
+Download-WithRetry -url $modelUrl -urlMirror $modelUrlMirror -outFile "$engineDir\it_IT-paola-medium.onnx"
+Download-WithRetry -url $jsonUrl -urlMirror $jsonUrlMirror -outFile "$engineDir\it_IT-paola-medium.onnx.json"
 
 Write-Host "Piper TTS setup complete!"
